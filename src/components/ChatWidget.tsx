@@ -118,6 +118,10 @@ export const ChatWidget = () => {
       ]);
     } finally {
       setIsLoading(false);
+      // Mantém o foco no input após enviar, mesmo se estava disabled
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
     }
   };
 
@@ -132,9 +136,12 @@ export const ChatWidget = () => {
       {isOpen && (
         <Card className="w-[350px] h-[500px] flex flex-col shadow-xl border-primary/20 animate-in slide-in-from-bottom-5 fade-in duration-300">
           <CardHeader className="bg-primary text-primary-foreground p-4 rounded-t-lg flex flex-row justify-between items-center space-y-0">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <CardTitle className="text-base font-medium">Vik - Assistente Vilpack</CardTitle>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <CardTitle className="text-base font-medium">Vik</CardTitle>
+              </div>
+              <span className="text-xs text-primary-foreground/80 ml-4">Consultora de Embalagens</span>
             </div>
             <Button
               variant="ghost"

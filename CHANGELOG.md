@@ -1,5 +1,11 @@
 # Changelog - Vilpack Bot
 
+## [0.3.3] - 2026-03-03
+### Corrigido
+- **UI/UX Chat:**
+    - Ajuste no cabeçalho do chat: Título "Vik" e subtítulo "Consultora de Embalagens".
+    - Melhoria de usabilidade: O campo de texto agora recupera o foco automaticamente após o envio da mensagem.
+
 ## [0.3.2] - 2026-03-03
 ### Adicionado
 - **Persona Vik:**
