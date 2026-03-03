@@ -24,11 +24,11 @@ async function main() {
   
   // 2. Create/Update Store
   const store = await prisma.store.upsert({
-    where: { slug: 'loja-demo' },
+    where: { slug: 'vilpack' },
     update: {},
     create: {
-      name: 'Loja Demo',
-      slug: 'loja-demo',
+      name: 'Vilpack',
+      slug: 'vilpack',
       phoneNumber: '5511999999999',
     },
   });

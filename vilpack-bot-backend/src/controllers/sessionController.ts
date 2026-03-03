@@ -5,9 +5,12 @@ import { sessionSchema } from '../validators/sessionSchema';
 export const sessionController = {
   async createSession(req: Request, res: Response, next: NextFunction) {
     try {
+      console.log('[SESSION DEBUG] Iniciando createSession. Body:', req.body);
       const { storeSlug } = sessionSchema.parse(req.body);
       
+      console.log(`[SESSION DEBUG] Buscando loja com slug: ${storeSlug}`);
       const session = await sessionService.createSession(storeSlug);
+      console.log(`[SESSION DEBUG] Sessão criada com sucesso: ${session.id}`);
       
       res.status(201).json({
         sessionId: session.id,
@@ -15,6 +18,7 @@ export const sessionController = {
         cartId: session.cart?.id
       });
     } catch (error: any) {
+      console.error('[SESSION DEBUG] Erro em createSession:', error);
       if (error.message === 'Loja não encontrada') {
         res.status(404).json({ error: error.message });
       } else {
