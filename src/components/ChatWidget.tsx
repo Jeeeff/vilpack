@@ -86,7 +86,7 @@ export const ChatWidget = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3000/chat/message', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ export const ChatWidget = () => {
           <CardHeader className="bg-primary text-primary-foreground p-4 rounded-t-lg flex flex-row justify-between items-center space-y-0">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <CardTitle className="text-base font-medium">Atendimento Vilpack</CardTitle>
+              <CardTitle className="text-base font-medium">Vik - Assistente Vilpack</CardTitle>
             </div>
             <Button
               variant="ghost"

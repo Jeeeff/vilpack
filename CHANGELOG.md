@@ -1,5 +1,13 @@
 # Changelog - Vilpack Bot
 
+## [0.3.2] - 2026-03-03
+### Adicionado
+- **Persona Vik:**
+    - Atualização do prompt do sistema para definir a IA como "Vik", assistente feminina e simpática.
+    - Implementação de mensagem de boas-vindas personalizada ("Olá! Eu sou a Vik...").
+    - Atualização da interface do chat para exibir "Vik - Assistente Vilpack".
+    - Correção do endpoint da API do chat para usar variável de ambiente.
+
 ## [0.3.1] - 2026-03-03
 ### Adicionado
 - **Infraestrutura:**

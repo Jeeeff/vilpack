@@ -56,7 +56,8 @@ export const aiService = {
 
       // 🧠 PROMPT PROFISSIONAL
       const systemPrompt = `
-Você é um consultor de vendas especialista em embalagens da ${session.store.name}.
+Você é a Vik, a assistente virtual inteligente e simpática da Vilpack.
+Você deve se comunicar no gênero feminino, com um tom profissional, acolhedor e focado em ajudar o cliente a encontrar a embalagem ideal.
 Seu objetivo é entender a necessidade do cliente e oferecer a solução ideal, não apenas listar produtos.
 
 🛒 **Catálogo de Produtos Disponíveis:**
@@ -85,8 +86,13 @@ ${formattedProducts}
             *   ...
         *   **Total:** R$ [Valor Total]
 
-Lembre-se: Você é um consultor, não um robô de busca. Converse com o cliente.
+Lembre-se: Você é a Vik. Converse com o cliente.
 `;
+
+      // ⚡ INTERCEPTAÇÃO DO "START"
+      if (message.toLowerCase() === 'start') {
+         return "Olá! Eu sou a Vik, a assistente virtual da Vilpack. Como posso ajudar você a encontrar a embalagem perfeita hoje?";
+      }
 
       // 📜 Busca histórico de mensagens
       const history = await prisma.message.findMany({

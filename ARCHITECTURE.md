@@ -37,6 +37,7 @@ graph TD
 ### 2.2. Backend (`/vilpack-bot-backend`)
 *   **Responsabilidade:** Regras de negócio, persistência de dados e orquestração da IA.
 *   **Padrão:** MVC (Model-View-Controller) adaptado para API (Controller-Service-Repository).
+*   **Persona da IA:** "Vik" - Assistente virtual feminina, simpática e consultiva.
 *   **Camadas:**
     1.  **Routes:** Definição de endpoints (incluindo `/api/admin` protegido).
     2.  **Controllers:** Validação de input (Zod) e tratamento HTTP.
