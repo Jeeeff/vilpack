@@ -238,7 +238,7 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                 <Store className="h-6 w-6 text-white" />
               </div>
               <div>
-                <CardTitle className="text-lg">Vik</CardTitle>
+                <CardTitle className="text-lg">Vik Assistente</CardTitle>
                 <p className="text-xs text-primary-foreground/80">Consultora de Embalagens</p>
               </div>
             </div>
