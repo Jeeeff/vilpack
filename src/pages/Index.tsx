@@ -27,7 +27,6 @@ const Index = () => {
       <DeliverySection />
       <PortalSection />
       <Footer />
-      <SmartChat />
     </div>
   );
 };

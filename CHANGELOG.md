@@ -1,5 +1,13 @@
 # Changelog - Vilpack Bot
 
+## [0.3.5] - 2026-03-03
+### Corrigido
+- **Busca Forense & Cleanup:**
+    - Identificada e removida renderização duplicada do componente `SmartChat` na Home (`Index.tsx` + `App.tsx`).
+    - Exclusão definitiva do arquivo `ChatWidget.tsx` (código legado/morto) que poderia estar causando conflitos de versão em cache.
+    - Correção profunda no Backend (`aiService.ts`): O System Prompt interno ainda continha "Sou o consultor". Ajustado para "Sou a Vik, a consultora".
+    - Varredura de segurança: Confirmada ausência de inputs `type="file"`, `capture` ou APIs de mídia no código fonte ativo.
+
 ## [0.3.4] - 2026-03-03
 ### Corrigido
 - **Bugfix Crítico (Mobile):**

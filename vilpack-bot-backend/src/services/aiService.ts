@@ -116,7 +116,7 @@ Lembre-se: Você é a Vik. Converse com o cliente.
         },
         {
           role: "model",
-          parts: [{ text: "Sim, entendi. Sou o consultor de vendas da Vilpack e seguirei essas diretrizes." }],
+          parts: [{ text: "Sim, entendi. Sou a Vik, a consultora de vendas da Vilpack e seguirei essas diretrizes." }],
         },
         ...historyContents,
         {
