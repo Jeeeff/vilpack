@@ -17,8 +17,9 @@ type Message = {
   summaryContent?: string;
 };
 
+import { API_URL } from '@/config/api';
+
 const STORE_SLUG = 'loja-demo';
-const API_URL = 'http://localhost:3001/api';
 
 interface SmartChatProps {
   onSessionChange?: (sessionId: string) => void;

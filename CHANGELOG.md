@@ -1,5 +1,13 @@
 # Changelog - Vilpack Bot
 
+## [0.3.6] - 2026-03-03
+### Corrigido
+- **Critical Bugfix (Permissões Fantasmas/Mobile):**
+    - Identificada a causa raiz do prompt "Acessar outros aplicativos e serviços neste dispositivo": O frontend estava tentando acessar `http://localhost:3001` (hardcoded) em ambiente de produção. Isso dispara alertas de "Private Network Access" e bloqueia o chat.
+    - Implementada configuração centralizada de API (`src/config/api.ts`) que utiliza `import.meta.env.VITE_API_URL` ou rota relativa `/api` em produção, eliminando requisições locais indevidas.
+    - Removidos todos os hardcodes de `localhost` em `SmartChat.tsx` e `CartSidebar.tsx`.
+    - Isolamento de `window.open` para garantir execução apenas mediante interação explícita do usuário (clique).
+
 ## [0.3.5] - 2026-03-03
 ### Corrigido
 - **Busca Forense & Cleanup:**

@@ -7,6 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { Trash2, ShoppingCart, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
+import { API_URL } from '@/config/api';
+
 interface CartItem {
   id: string;
   productId: string;
@@ -46,7 +48,7 @@ export function CartSidebar({ sessionId, trigger, open, onOpenChange }: CartSide
     if (!sessionId) return;
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/cart/${sessionId}`);
+      const res = await fetch(`${API_URL}/cart/${sessionId}`);
       if (!res.ok) throw new Error("Falha ao buscar carrinho");
       const data = await res.json();
       setCart(data);
@@ -77,7 +79,7 @@ export function CartSidebar({ sessionId, trigger, open, onOpenChange }: CartSide
 
   const handleRemoveItem = async (itemId: string) => {
     try {
-      const res = await fetch(`http://localhost:3001/api/cart/item/${itemId}`, {
+      const res = await fetch(`${API_URL}/cart/item/${itemId}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error("Falha ao remover item");
@@ -91,7 +93,7 @@ export function CartSidebar({ sessionId, trigger, open, onOpenChange }: CartSide
   const handleCheckout = async () => {
     setCheckoutLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/cart/checkout`, {
+      const res = await fetch(`${API_URL}/cart/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
