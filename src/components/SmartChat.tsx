@@ -158,6 +158,10 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
       addAssistantMessage("Desculpe, tive um problema técnico. Pode tentar novamente?", sessionId || '');
     } finally {
       setIsLoading(false);
+      // Mantém o foco no input após enviar
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
     }
   };
 
@@ -234,8 +238,8 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                 <Store className="h-6 w-6 text-white" />
               </div>
               <div>
-                <CardTitle className="text-lg">Vilpack Assistant</CardTitle>
-                <p className="text-xs text-primary-foreground/80">Consultor de Embalagens</p>
+                <CardTitle className="text-lg">Vik</CardTitle>
+                <p className="text-xs text-primary-foreground/80">Consultora de Embalagens</p>
               </div>
             </div>
             <Button
@@ -253,7 +257,7 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground mt-20 space-y-4 opacity-70">
                   <Store className="h-16 w-16 text-primary/20" />
-                  <p>Olá! Sou o assistente virtual da Vilpack.</p>
+                  <p>Olá! Sou a Vik, a assistente virtual da Vilpack.</p>
                   <p>Posso te ajudar a encontrar as melhores embalagens para o seu negócio.</p>
                 </div>
               )}

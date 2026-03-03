@@ -2,7 +2,8 @@
 
 ## [0.3.3] - 2026-03-03
 ### Corrigido
-- **UI/UX Chat:**
+- **UI/UX Chat (SmartChat):**
+    - Atualização da mensagem inicial de boas-vindas para a persona "Vik".
     - Ajuste no cabeçalho do chat: Título "Vik" e subtítulo "Consultora de Embalagens".
     - Melhoria de usabilidade: O campo de texto agora recupera o foco automaticamente após o envio da mensagem.
 
