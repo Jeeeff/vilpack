@@ -4,6 +4,7 @@ dotenv.config();
 
 import app from './app';
 import prisma from './config/prisma';
+import bcrypt from 'bcryptjs';
 
 const PORT = process.env.PORT || 3001;
 
@@ -19,6 +20,21 @@ async function start() {
     // Check DB Connection
     await prisma.$connect();
     console.log('✅ Database connected');
+
+    // Seed Master Admin
+    const adminCount = await prisma.adminUser.count();
+    if (adminCount === 0) {
+      console.log('🌱 Seeding Master Admin User...');
+      const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'vilpack2026', 10);
+      await prisma.adminUser.create({
+        data: {
+          username: 'admin',
+          password: hashedPassword,
+          role: 'MASTER'
+        }
+      });
+      console.log('✅ Master Admin created: admin / ' + (process.env.ADMIN_PASSWORD || 'vilpack2026'));
+    }
 
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Lock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const PortalSection = () => (
   <section className="py-20 bg-muted/50">
@@ -20,9 +21,11 @@ const PortalSection = () => (
         <p className="text-muted-foreground mb-6">
           Acesso exclusivo a preços de atacado, catálogos técnicos e acompanhamento de pedidos.
         </p>
-        <Button variant="outline" size="lg">
-          Acessar Portal <ArrowRight className="ml-2" size={16} />
-        </Button>
+        <Link to="/admin/login">
+          <Button variant="outline" size="lg">
+            Acessar Portal <ArrowRight className="ml-2" size={16} />
+          </Button>
+        </Link>
       </motion.div>
     </div>
   </section>

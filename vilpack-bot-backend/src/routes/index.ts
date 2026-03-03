@@ -6,6 +6,7 @@ import cartRoutes from './cartRoutes';
 import aiRoutes from './aiRoutes';
 import sessionRoutes from './sessionRoutes';
 import orderRoutes from './orderRoutes';
+import adminRoutes from './adminRoutes';
 
 const router = Router();
 
@@ -15,6 +16,7 @@ router.use('/cart', cartRoutes);
 router.use('/ai', aiRoutes);
 router.use('/session', sessionRoutes);
 router.use('/order', orderRoutes);
+router.use('/admin', adminRoutes);
 
 router.get('/force-migrate', async (req, res) => {
     try {

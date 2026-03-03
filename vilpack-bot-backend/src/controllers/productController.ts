@@ -46,5 +46,24 @@ export const productController = {
     } catch (error) {
       res.status(500).json({ error: 'Erro ao deletar produto' });
     }
+  },
+
+  async updateProductImage(req: Request, res: Response) {
+    const id = req.params.id as string;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: 'Nenhuma imagem enviada' });
+    }
+
+    try {
+      const imageUrl = `/uploads/products/${file.filename}`;
+      const product = await productService.update(id, { imageUrl });
+      res.json(product);
+    } catch (error) {
+      res.status(500).json({ error: 'Erro ao atualizar imagem do produto' });
+    }
   }
 };
+
+export const updateProductImage = productController.updateProductImage;

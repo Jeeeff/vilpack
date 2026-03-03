@@ -1,5 +1,27 @@
 # Changelog - Vilpack Bot
 
+## [0.3.1] - 2026-03-03
+### Adicionado
+- **Infraestrutura:**
+    - Configuração de HTTPS/SSL no `nginx.conf` utilizando certificados Let's Encrypt.
+    - Redirecionamento automático de HTTP (80) para HTTPS (443).
+    - Atualização do `docker-compose.yml` para expor a porta 443 e mapear volumes de certificados.
+
+## [0.3.0] - 2026-03-03
+### Adicionado
+- **White-label & SEO:**
+    - Atualização do `index.html` com título e meta tags da Vilpack.
+    - Novo Favicon (`favicon.svg`) e remoção de referências ao boilerplate antigo.
+    - Redirecionamento do "Portal do Representante" para o Login Admin.
+- **Segurança Admin:**
+    - Tabela `AdminUser` com suporte a roles (`MASTER`, `VIEWER`).
+    - Autenticação JWT com senha hasheada (`bcryptjs`).
+    - Seed automático de usuário Master (`admin`).
+- **Painel Administrativo:**
+    - Login funcional com validação segura.
+    - Telas de Leads e Catálogo integradas à API.
+    - Upload de imagens de produtos via `multer`.
+
 ## [0.2.5] - 2026-02-27
 ### Alterado
 - **UI/UX Frontend:**

@@ -10,7 +10,7 @@ O sistema Vilpack interage com três atores principais: o Cliente Final, a IA Ge
 
 ```mermaid
 graph TD
-    User[Cliente Final] -->|HTTPS / Navegador| Frontend[Frontend SPA (React)]
+    User[Cliente Final] -->|HTTPS (443)| Frontend[Frontend SPA (React)]
     Frontend -->|JSON / REST| Backend[Backend API (Node.js/Express)]
     Backend -->|SQL| DB[(PostgreSQL)]
     Backend -->|API Call| Gemini[Google Gemini AI]
@@ -24,7 +24,10 @@ graph TD
 ### 2.1. Frontend (`/src`)
 *   **Responsabilidade:** Interface do usuário, renderização do catálogo e gestão do chat.
 *   **Padrão:** Single Page Application (SPA).
-*   **Estado:** Gerenciado via React Hooks (`useState`, `useEffect`) e Context API (implícita via props drilling controlado ou bibliotecas leves).
+*   **Servidor:** Nginx (Container Docker).
+    *   **Porta 80:** Redirecionamento para HTTPS.
+    *   **Porta 443:** SSL/TLS via Let's Encrypt.
+*   **Estado:** Gerenciado via React Hooks (`useState`, `useEffect`) e Context API.
 *   **Comunicação:** `fetch` API para comunicação com o backend.
 *   **Componentes Chave:**
     *   `SmartChat`: Gerencia a janela de chat, histórico local e chamadas à API de IA.
@@ -35,19 +38,25 @@ graph TD
 *   **Responsabilidade:** Regras de negócio, persistência de dados e orquestração da IA.
 *   **Padrão:** MVC (Model-View-Controller) adaptado para API (Controller-Service-Repository).
 *   **Camadas:**
-    1.  **Routes:** Definição de endpoints.
+    1.  **Routes:** Definição de endpoints (incluindo `/api/admin` protegido).
     2.  **Controllers:** Validação de input (Zod) e tratamento HTTP.
     3.  **Services:** Lógica de negócio pura (ex: `aiService`, `cartService`).
     4.  **Prisma Client:** Acesso a dados (ORM).
+    5.  **Auth:** Middleware JWT e Bcypt para proteção de rotas administrativas.
 
 ### 2.3. Banco de Dados (PostgreSQL)
 *   **Schema:** Relacional normalizado.
-*   **Tabelas Principais:** `Store`, `Product`, `Category`, `Session`, `Message`, `Cart`, `Order`.
+*   **Tabelas Principais:** `Store`, `Product`, `Category`, `Session`, `Message`, `Cart`, `Order`, `AdminUser`.
 *   **Estratégia de Sessão:** `Session` é a entidade central que amarra o usuário anônimo ao seu carrinho e histórico de chat.
 
 ---
 
 ## 3. Decisões Arquiteturais (ADRs)
+
+### ADR-004: Autenticação Administrativa
+*   **Contexto:** Necessidade de proteger o painel de gerenciamento (Leads, Catálogo).
+*   **Decisão:** Implementar autenticação baseada em **JWT (JSON Web Tokens)** com senhas hasheadas via **bcrypt**.
+*   **Justificativa:** Padrão de mercado seguro e stateless, ideal para SPAs. Permite fácil expansão para múltiplos níveis de acesso (Roles) sem manter estado de sessão no servidor.
 
 ### ADR-001: Chat-First Experience
 *   **Contexto:** O objetivo é simular uma venda consultiva, não apenas um catálogo self-service.

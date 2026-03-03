@@ -20,6 +20,10 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-vilpack}
       PORT: 3001
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-vilpack2026}
+      JWT_SECRET: ${JWT_SECRET:-supersecretvilpackkey2026}
+    volumes:
+      - ./uploads:/app/public/uploads
     depends_on:
       - db
     networks:
@@ -29,6 +33,9 @@ services:
     build: .
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - backend
     networks:
