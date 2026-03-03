@@ -1,5 +1,16 @@
 # Changelog - Vilpack Bot
 
+## [0.3.4] - 2026-03-03
+### Corrigido
+- **Bugfix Crítico (Mobile):**
+    - Remoção total de requisições de permissão de hardware (microfone, câmera, geolocalização) no widget de chat.
+    - Garantia de que o chat opera estritamente via texto, prevenindo crashes em dispositivos móveis.
+- **UI/UX Branding:**
+    - Padronização definitiva da persona "Vik" em todos os componentes.
+    - Substituição de "Vilpack Assistant" por "Vik".
+    - Correção de gênero: "Consultor" para "Consultora de Embalagens".
+    - Unificação da mensagem de boas-vindas: "Olá! Sou a Vik, a assistente virtual da Vilpack."
+
 ## [0.3.3] - 2026-03-03
 ### Corrigido
 - **UI/UX Chat (SmartChat):**
