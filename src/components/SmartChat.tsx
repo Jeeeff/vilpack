@@ -318,7 +318,8 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                                   onClick={() => {
                                       const phone = "5511999999999"; 
                                       const text = encodeURIComponent(msg.summaryContent || '');
-                                      window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+                                      // Using window.location.href instead of window.open to prevent permission prompts
+                                      window.location.href = `https://wa.me/${phone}?text=${text}`;
                                   }}
                               >
                                   <MessageCircle className="h-5 w-5 fill-current" />

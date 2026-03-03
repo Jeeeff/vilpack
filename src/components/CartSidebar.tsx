@@ -110,7 +110,9 @@ export function CartSidebar({ sessionId, trigger, open, onOpenChange }: CartSide
       
       const data = await res.json();
       if (data.link) {
-        window.open(data.link, '_blank');
+        // Use window.location.href instead of window.open to prevent popup blockers
+        // and ensure the redirect happens in the same tab, which is more reliable on mobile
+        window.location.href = data.link;
         toast.success("Redirecionando para WhatsApp...");
       }
     } catch (error) {
