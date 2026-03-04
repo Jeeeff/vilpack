@@ -8,7 +8,6 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import Autoplay from "embla-carousel-autoplay";
 import { useEffect, useState } from "react";
 
 const heroSlides = [
@@ -49,6 +48,13 @@ const HeroCarousel = () => {
     api.on("select", () => {
       setCurrent(api.selectedScrollSnap() + 1);
     });
+
+    // Autoplay customizado para direção "Top to Bottom" (scrollPrev)
+    const intervalId = setInterval(() => {
+      api.scrollPrev();
+    }, 5000);
+
+    return () => clearInterval(intervalId);
   }, [api]);
 
   return (
@@ -59,15 +65,10 @@ const HeroCarousel = () => {
           align: "start",
           loop: true,
           axis: "y",
-          duration: 40, 
+          duration: 40,
+          watchDrag: false, // Desabilita interação manual (swipe/drag)
         }}
         orientation="vertical"
-        plugins={[
-          Autoplay({
-            delay: 5000,
-            stopOnInteraction: false,
-          }),
-        ]}
         className="w-full h-screen"
       >
         <CarouselContent className="h-screen flex flex-col mt-0">
@@ -82,13 +83,11 @@ const HeroCarousel = () => {
               {/* Overlay */}
               <div className="absolute inset-0 bg-black/60 z-0" />
 
-              {/* Overlay de Transição Suave (Frosted Glass Fade) */}
+              {/* Overlay de Transição Suave (Fade para Preto) */}
               <div 
                 className="absolute bottom-0 left-0 w-full h-64 pointer-events-none z-10" 
                 style={{ 
-                  background: 'linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.8) 75%, rgba(255,255,255,1) 100%)', 
-                  backdropFilter: 'blur(4px)', 
-                  WebkitBackdropFilter: 'blur(4px)', 
+                  background: 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.8) 75%, rgba(0,0,0,1) 100%)', 
                   maskImage: 'linear-gradient(to bottom, transparent, black 50%)', 
                   WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 50%)' 
                 }} 

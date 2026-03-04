@@ -6,7 +6,7 @@ const HeroSection = () => {
   return (
     <section
       id="inicio"
-      className="relative w-full py-16 md:py-24 flex items-center overflow-hidden bg-background"
+      className="relative w-full py-16 md:py-24 flex items-center overflow-hidden bg-black text-white"
     >
       {/* Geometric watermark */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -14,7 +14,7 @@ const HeroSection = () => {
           {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="absolute bg-secondary"
+              className="absolute bg-white"
               style={{
                 width: `${60 + i * 40}px`,
                 height: `${60 + i * 40}px`,
@@ -37,21 +37,21 @@ const HeroSection = () => {
           <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary mb-6">
             Atacado de Embalagens
           </span>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-foreground mb-6">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-white mb-6">
             Soluções Completas em{" "}
             <span className="text-primary">Atacado de Embalagens</span>
           </h1>
-          <p className="text-lg text-muted-foreground mb-8 max-w-lg">
+          <p className="text-lg text-gray-400 mb-8 max-w-lg">
             Qualidade técnica, logística ágil e atendimento personalizado para
             impulsionar o seu negócio com as melhores embalagens do mercado.
           </p>
           <div className="flex flex-wrap gap-4">
-            <Button size="lg" asChild>
+            <Button size="lg" asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
               <a href="#produtos">
                 Ver Catálogo <ArrowRight className="ml-2" size={18} />
               </a>
             </Button>
-            <Button size="lg" variant="outline" asChild>
+            <Button size="lg" variant="outline" asChild className="border-white/20 text-white hover:bg-white hover:text-black">
               <a href="#contato">Solicitar Orçamento</a>
             </Button>
           </div>
@@ -72,15 +72,15 @@ const HeroSection = () => {
             />
             {/* Background triangles */}
             <div
-              className="absolute top-0 -left-12 w-32 h-32 bg-gray-200"
+              className="absolute top-0 -left-12 w-32 h-32 bg-gray-800"
               style={{ clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }}
             />
             <div
-              className="absolute bottom-10 -right-10 w-24 h-24 bg-amber-100"
+              className="absolute bottom-10 -right-10 w-24 h-24 bg-amber-900/40"
               style={{ clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }}
             />
             <div
-              className="absolute top-1/2 -right-16 w-20 h-20 bg-gray-100"
+              className="absolute top-1/2 -right-16 w-20 h-20 bg-gray-700"
               style={{ clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }}
             />
           </div>

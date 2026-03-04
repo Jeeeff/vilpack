@@ -1,5 +1,21 @@
 # Changelog - Vilpack Bot
 
+## [0.3.7] - 2026-03-04
+### Corrigido
+- **UX Mobile (HeroCarousel):**
+    - **Bloqueio de Interação Manual:** Desabilitada a captura de toque/arrasto (`watchDrag: false`) no carrossel. Isso resolve o problema onde o usuário ficava "preso" no carrossel ao tentar rolar a página para baixo em dispositivos móveis.
+    - **Direção Invertida:** Autoplay configurado para transição de "Cima para Baixo" (Top to Bottom), criando um efeito visual único de cascata.
+- **Backend (Self-Healing):**
+    - **Correção de Sessão (404):** Implementada lógica de auto-criação de Loja (`Store`) no `sessionService.ts` caso não exista. Isso previne erros 404 na rota `/api/session` quando o banco de dados está limpo ou dessincronizado com o seed.
+    - **Seed:** Atualizado slug da loja padrão para `vilpack` para consistência.
+
+### Melhorado
+- **Visual (Dark Mode Hero):**
+    - **Integração Perfeita:** `HeroSection` agora possui fundo preto (`bg-black`), eliminando a linha divisória com o carrossel.
+    - **Elementos Geométricos:** Cores dos elementos decorativos ajustadas para tons escuros (`gray-800`, `amber-900/40`) para harmonia com o novo fundo.
+    - **Legibilidade:** Textos atualizados para branco e cinza claro para garantir contraste adequado.
+    - **Transição Suave:** O gradiente inferior do carrossel agora desvanece para preto total, fundindo-se imperceptivelmente com a próxima seção.
+
 ## [0.3.6] - 2026-03-03
 ### Corrigido
 - **Critical Bugfix (Permissões Fantasmas/Mobile):**
