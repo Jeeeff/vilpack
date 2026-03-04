@@ -10,6 +10,11 @@
     - **Seed:** Atualizado slug da loja padrão para `vilpack` para consistência.
 
 ### Melhorado
+- **Visual (HeroCarousel):**
+    - **Novas Imagens:** Substituídas imagens genéricas por fotos reais dos produtos (`slide_sacola.jpg`, `slide_pao.jpg`).
+    - **Transição Horizontal:** Alterado o efeito do carrossel para deslizar da Esquerda para a Direita, eliminando a sensação de "barra preta correndo" da transição vertical.
+    - **Limpeza Visual:** Removidos textos e botões sobrepostos dos slides, valorizando as novas imagens que já contêm informações visuais.
+    - **Interação:** Mantido o bloqueio de interação manual (`watchDrag: false`) para preservar a experiência de scroll vertical no mobile.
 - **Visual (Dark Mode Hero):**
     - **Integração Perfeita:** `HeroSection` agora possui fundo preto (`bg-black`), eliminando a linha divisória com o carrossel.
     - **Elementos Geométricos:** Cores dos elementos decorativos ajustadas para tons escuros (`gray-800`, `amber-900/40`) para harmonia com o novo fundo.
