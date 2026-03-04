@@ -2,12 +2,20 @@ import prisma from '../config/prisma';
 
 export const sessionService = {
   async createSession(storeSlug: string) {
-    const store = await prisma.store.findUnique({
+    let store = await prisma.store.findUnique({
       where: { slug: storeSlug },
     });
 
     if (!store) {
-      throw new Error('Loja não encontrada');
+      console.log(`[SESSION SERVICE] Loja '${storeSlug}' não encontrada. Criando automaticamente...`);
+      store = await prisma.store.create({
+        data: {
+          name: storeSlug.charAt(0).toUpperCase() + storeSlug.slice(1),
+          slug: storeSlug,
+          phoneNumber: '5511999999999', // Default placeholder
+        }
+      });
+      console.log(`[SESSION SERVICE] Loja '${storeSlug}' criada com sucesso.`);
     }
 
     const session = await prisma.session.create({
