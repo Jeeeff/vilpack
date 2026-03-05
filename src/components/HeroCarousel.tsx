@@ -20,7 +20,7 @@ const heroSlides = [
     buttonColor: "primary",
     desktopTop: "82%",
     desktopLeft: "83%",
-    mobileBg: "#27272a" // Zinc-800 equivalent for dark gray
+    mobileBg: "#3A3A3A" // Cinza Escuro exato (Sacola)
   },
   {
     id: 2,
@@ -30,7 +30,7 @@ const heroSlides = [
     buttonColor: "dark",
     desktopTop: "75%",
     desktopLeft: "81%",
-    mobileBg: "hsl(42 97% 53%)" // Primary Yellow
+    mobileBg: "#FDB913" // Amarelo exato (Pão)
   },
   {
     id: 3,
@@ -40,7 +40,7 @@ const heroSlides = [
     buttonColor: "primary",
     desktopTop: "82%",
     desktopLeft: "83%",
-    mobileBg: "#27272a"
+    mobileBg: "#3A3A3A"
   }
 ];
 
@@ -61,7 +61,7 @@ const HeroCarousel = () => {
   }, [api]);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-black">
+    <div className="relative w-full md:h-screen h-auto overflow-hidden bg-black">
       <Carousel
         setApi={setApi}
         opts={{
@@ -76,26 +76,26 @@ const HeroCarousel = () => {
             stopOnInteraction: false,
           }),
         ]}
-        className="w-full h-screen"
+        className="w-full md:h-screen h-auto"
       >
-        <CarouselContent className="h-screen mt-0 ml-0">
+        <CarouselContent className="md:h-screen h-auto mt-0 ml-0">
           {heroSlides.map((slide) => (
-            <CarouselItem key={slide.id} className="h-screen w-full flex-shrink-0 relative p-0 border-0 pl-0 pt-0 bg-black">
+            <CarouselItem key={slide.id} className="md:h-screen h-auto w-full flex-shrink-0 relative p-0 border-0 pl-0 pt-0 bg-black">
               
               {/* --- MOBILE VIEW --- */}
-              <div className="md:hidden flex flex-col w-full h-full bg-black">
-                {/* Main Mobile Image - Contain & Full Width */}
-                <div className="flex-1 w-full relative bg-black overflow-hidden">
+              <div className="md:hidden flex flex-col w-full h-auto bg-black">
+                {/* Main Mobile Image - Block & Auto Height */}
+                <div className="w-full relative bg-black overflow-hidden">
                   <img 
                     src={slide.mobileImage || slide.image} 
                     alt={slide.alt} 
-                    className="w-full h-full object-contain object-bottom"
+                    className="w-full h-auto block"
                   />
                 </div>
 
-                {/* Footer Button Container - Matches Slide Footer Color */}
+                {/* Footer Button Container - Matches Slide Footer Color with Negative Margin Overlap */}
                 <div 
-                  className="w-full py-8 flex justify-center items-center shrink-0 z-20"
+                  className="w-full py-8 flex justify-center items-center shrink-0 relative z-10 -mt-2"
                   style={{ backgroundColor: slide.mobileBg }}
                 >
                   <Button 
