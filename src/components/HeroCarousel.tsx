@@ -18,8 +18,8 @@ const heroSlides = [
     mobileImage: "/slide_sacola_mobile.jpg",
     alt: "Saco Kraft Vilpack",
     buttonColor: "primary",
-    desktopTop: "82%",
-    desktopLeft: "80%",
+    desktopTop: "79%",
+    desktopLeft: "81.5%",
     mobileBg: "#3A3A3A" // Cinza Escuro exato (Sacola)
   },
   {
@@ -38,8 +38,8 @@ const heroSlides = [
     mobileImage: "/slide_sacola_mobile.jpg",
     alt: "Saco Kraft Vilpack (Extra)",
     buttonColor: "primary",
-    desktopTop: "82%",
-    desktopLeft: "80%",
+    desktopTop: "79%",
+    desktopLeft: "81.5%",
     mobileBg: "#3A3A3A"
   }
 ];
@@ -61,7 +61,7 @@ const HeroCarousel = () => {
   }, [api]);
 
   return (
-    <div className="relative w-full md:h-screen h-auto overflow-hidden bg-black">
+    <div className="relative w-full h-auto overflow-hidden bg-black">
       <Carousel
         setApi={setApi}
         opts={{
@@ -76,11 +76,11 @@ const HeroCarousel = () => {
             stopOnInteraction: false,
           }),
         ]}
-        className="w-full md:h-screen h-auto"
+        className="w-full h-auto"
       >
-        <CarouselContent className="md:h-screen h-auto mt-0 ml-0">
+        <CarouselContent className="h-auto mt-0 ml-0">
           {heroSlides.map((slide) => (
-            <CarouselItem key={slide.id} className="md:h-screen h-auto w-full flex-shrink-0 relative p-0 border-0 pl-0 pt-0 bg-black">
+            <CarouselItem key={slide.id} className="h-auto w-full flex-shrink-0 relative p-0 border-0 pl-0 pt-0 bg-black">
               
               {/* --- MOBILE VIEW --- */}
               <div className="md:hidden flex flex-col w-full h-auto bg-black">
