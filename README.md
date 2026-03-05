@@ -133,6 +133,10 @@ npm run dev
 
 - **Backend Docs:** Veja `vilpack-bot-backend/DOCUMENTATION.md` para detalhes dos endpoints e modelos de dados.
 - **Changelog:** Veja `CHANGELOG.md` para o histórico de versões e alterações recentes.
+- **UI/UX Docs:**
+  - **Header/Menu:** O cabeçalho foi atualizado para um design sólido (`bg-black`) sem sobreposição ao conteúdo, garantindo legibilidade e evitando cortes em imagens de banner.
+  - **Banners Desktop:** Os botões de chamada para ação ("Clique Aqui") utilizam posicionamento absoluto com coordenadas em porcentagem (`top: %, left: %`) para manter o alinhamento visual com elementos de texto embutidos nas imagens de fundo, independentemente da resolução da tela.
+
 
 ---
 

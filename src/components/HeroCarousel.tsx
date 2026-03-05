@@ -19,7 +19,7 @@ const heroSlides = [
     alt: "Saco Kraft Vilpack",
     buttonColor: "primary",
     desktopTop: "82%",
-    desktopLeft: "83%",
+    desktopLeft: "80%",
     mobileBg: "#3A3A3A" // Cinza Escuro exato (Sacola)
   },
   {
@@ -39,7 +39,7 @@ const heroSlides = [
     alt: "Saco Kraft Vilpack (Extra)",
     buttonColor: "primary",
     desktopTop: "82%",
-    desktopLeft: "83%",
+    desktopLeft: "80%",
     mobileBg: "#3A3A3A"
   }
 ];
