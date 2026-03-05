@@ -15,17 +15,32 @@ const heroSlides = [
   {
     id: 1,
     image: "/slide_sacola.jpg",
-    alt: "Saco Kraft Vilpack"
+    mobileImage: "/slide_sacola_mobile.jpg",
+    alt: "Saco Kraft Vilpack",
+    buttonColor: "primary",
+    desktopTop: "82%",
+    desktopLeft: "83%",
+    mobileBg: "#27272a" // Zinc-800 equivalent for dark gray
   },
   {
     id: 2,
     image: "/slide_pao.jpg",
-    alt: "Sacos de Pão"
+    mobileImage: "/slide_pao_mobile.jpg", // Fallback enquanto não temos a imagem mobile específica
+    alt: "Sacos de Pão",
+    buttonColor: "dark",
+    desktopTop: "75%",
+    desktopLeft: "81%",
+    mobileBg: "hsl(42 97% 53%)" // Primary Yellow
   },
   {
     id: 3,
-    image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop",
-    alt: "Depósito de caixas de papelão"
+    image: "/slide_sacola.jpg",
+    mobileImage: "/slide_sacola_mobile.jpg",
+    alt: "Saco Kraft Vilpack (Extra)",
+    buttonColor: "primary",
+    desktopTop: "82%",
+    desktopLeft: "83%",
+    mobileBg: "#27272a"
   }
 ];
 
@@ -65,25 +80,73 @@ const HeroCarousel = () => {
       >
         <CarouselContent className="h-screen mt-0 ml-0">
           {heroSlides.map((slide) => (
-            <CarouselItem key={slide.id} className="h-screen w-full flex-shrink-0 relative p-0 border-0 pl-0 pt-0">
-              {/* Background Image */}
-              <img 
-                src={slide.image} 
-                alt={slide.alt} 
-                className="absolute inset-0 w-full h-full object-cover z-0" 
-              />
-              {/* Overlay suave para legibilidade do menu (opcional, já que removemos textos) */}
-              <div className="absolute inset-0 bg-black/20 z-0" />
+            <CarouselItem key={slide.id} className="h-screen w-full flex-shrink-0 relative p-0 border-0 pl-0 pt-0 bg-black">
+              
+              {/* --- MOBILE VIEW --- */}
+              <div className="md:hidden flex flex-col w-full h-full bg-black">
+                {/* Main Mobile Image - Contain & Full Width */}
+                <div className="flex-1 w-full relative bg-black overflow-hidden">
+                  <img 
+                    src={slide.mobileImage || slide.image} 
+                    alt={slide.alt} 
+                    className="w-full h-full object-contain object-bottom"
+                  />
+                </div>
 
-              {/* Overlay de Transição Suave (Fade para Preto na base) */}
-              <div 
-                className="absolute bottom-0 left-0 w-full h-64 pointer-events-none z-10" 
-                style={{ 
-                  background: 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.8) 75%, rgba(0,0,0,1) 100%)', 
-                  maskImage: 'linear-gradient(to bottom, transparent, black 50%)', 
-                  WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 50%)' 
-                }} 
-              />
+                {/* Footer Button Container - Matches Slide Footer Color */}
+                <div 
+                  className="w-full py-8 flex justify-center items-center shrink-0 z-20"
+                  style={{ backgroundColor: slide.mobileBg }}
+                >
+                  <Button 
+                    size="lg" 
+                    asChild 
+                    className={`text-lg font-bold uppercase tracking-wider px-10 py-7 rounded-full shadow-[0_4px_14px_0_rgba(0,0,0,0.39)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)] hover:-translate-y-1 transition-all duration-300 border-2 border-white/20 backdrop-blur-sm
+                      ${slide.buttonColor === 'dark' 
+                        ? 'bg-zinc-800 hover:bg-zinc-900 text-white' 
+                        : 'bg-primary hover:bg-primary/90 text-zinc-900'
+                      }`}
+                  >
+                    <a href="#produtos">Clique Aqui</a>
+                  </Button>
+                </div>
+              </div>
+
+              {/* --- DESKTOP VIEW (Banner Implementation) --- */}
+              {/* Estrutura do Container: relative, width: 100%, overflow: hidden */}
+              <div className="hidden md:block relative w-full overflow-hidden">
+                {/* A Imagem: width: 100%, height: auto, display: block */}
+                <img 
+                  src={slide.image} 
+                  alt={slide.alt} 
+                  className="w-full h-auto block"
+                />
+                
+                {/* O Botão (Absolute): Positioned dynamically */}
+                <div 
+                  className="absolute z-20"
+                  style={{ 
+                    top: slide.desktopTop, 
+                    left: slide.desktopLeft, 
+                    transform: 'translate(-50%, -50%)' 
+                  }}
+                >
+                  <Button 
+                    size="lg" 
+                    asChild 
+                    className={`text-lg font-bold uppercase tracking-wider px-10 py-7 rounded-full shadow-[0_4px_14px_0_rgba(0,0,0,0.39)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)] hover:-translate-y-1 transition-all duration-300 border-2 border-white/20 backdrop-blur-sm
+                      ${slide.buttonColor === 'dark' 
+                        ? 'bg-zinc-800 hover:bg-zinc-900 text-white' 
+                        : 'bg-primary hover:bg-primary/90 text-zinc-900'
+                      }`}
+                  >
+                    <a href="#produtos">
+                      Clique Aqui
+                    </a>
+                  </Button>
+                </div>
+              </div>
+
             </CarouselItem>
           ))}
         </CarouselContent>
