@@ -51,8 +51,40 @@ model Session {
   cart      Cart?
   messages  Message[]
   orders    Order[]
+  lead      Lead?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+}
+
+model Lead {
+  id                 String     @id @default(uuid())
+  sessionId          String     @unique
+  session            Session    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name               String?
+  whatsapp           String?
+  email              String?
+  segment            String?
+  companyName        String?
+  interestSummary    String?
+  productsOfInterest String?
+  leadSource         String     @default("chat_vik")
+  status             String     @default("NEW") // NEW, ENGAGED, QUALIFIED, WAITING_HUMAN, CONVERTED, LOST
+  qualificationScore Int        @default(0)
+  lastInteractionAt  DateTime   @default(now())
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  summary            LeadConversationSummary?
+}
+
+model LeadConversationSummary {
+  id                    String   @id @default(uuid())
+  leadId                String   @unique
+  lead                  Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  summary               String?
+  needDescription       String?
+  detectedIntent        String?
+  nextRecommendedAction String?
+  lastAiUpdateAt        DateTime @default(now())
 }
 
 model Cart {
