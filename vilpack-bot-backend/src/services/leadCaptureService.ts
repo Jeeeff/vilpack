@@ -25,17 +25,24 @@ export const leadCaptureService = {
   extractDeterministicData(message: string): Partial<ExtractedLeadData> {
     const data: Partial<ExtractedLeadData> = {};
 
-    // Email Regex
+    // Normalização de Email
     const emailMatch = message.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-    if (emailMatch) data.email = emailMatch[0];
+    if (emailMatch) data.email = emailMatch[0].toLowerCase();
 
-    // WhatsApp/Phone Regex (Padrão brasileiro simples)
-    const phoneMatch = message.replace(/\D/g, '').match(/(?:\d{2})?9\d{8}/);
-    if (phoneMatch) data.whatsapp = phoneMatch[0];
+    // Normalização de WhatsApp/Phone (Apenas números, remove 55 se vier com DDD)
+    let phoneDigits = message.replace(/\D/g, '');
+    if (phoneDigits.length >= 10) {
+      if (phoneDigits.startsWith('55') && phoneDigits.length > 11) {
+        phoneDigits = phoneDigits.substring(2);
+      }
+      data.whatsapp = phoneDigits;
+    }
 
     // Padrões simples de nome: "meu nome é [Nome]", "me chame de [Nome]"
     const nameMatch = message.match(/(?:meu nome é|me chame de|sou o|sou a)\s+([a-zA-ZÀ-ÿ]+)/i);
-    if (nameMatch) data.name = nameMatch[1];
+    if (nameMatch && nameMatch[1].length > 2) {
+      data.name = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1).toLowerCase();
+    }
 
     return data;
   },
@@ -89,46 +96,145 @@ Vik (resposta): ${assistantReply}
   },
 
   /**
-   * Sincroniza os dados extraídos com o banco de dados.
+   * Calcula o score do lead baseado nos campos preenchidos e contexto.
+   */
+  calculateScore(lead: any): { score: number; status: string } {
+    let score = 0;
+    
+    if (lead.name) score += 10;
+    if (lead.segment) score += 15;
+    if (lead.interestSummary || lead.productsOfInterest) score += 20;
+    if (lead.whatsapp) score += 25;
+    if (lead.email) score += 15;
+    
+    // Bônus por intenção clara (detectada pela IA no status)
+    if (lead.status === 'WAITING_HUMAN' || lead.status === 'QUALIFIED') score += 15;
+
+    let status = 'NEW';
+    if (score >= 75) status = 'WAITING_HUMAN';
+    else if (score >= 50) status = 'QUALIFIED';
+    else if (score >= 25) status = 'ENGAGED';
+
+    return { score: Math.min(score, 100), status };
+  },
+
+  /**
+   * Gera um resumo comercial automático via IA.
+   */
+  async generateCommercialSummary(sessionId: string, lead: any): Promise<string | null> {
+    try {
+      const summaryPrompt = `
+Gere um resumo comercial curto e operacional para o time de vendas.
+Dados do Lead:
+- Nome: ${lead.name || 'Não informado'}
+- Segmento: ${lead.segment || 'Não informado'}
+- Necessidade: ${lead.interestSummary || 'Não detalhada'}
+- Produtos citados: ${lead.productsOfInterest || 'Nenhum'}
+- WhatsApp: ${lead.whatsapp ? 'Sim' : 'Não'}
+- Email: ${lead.email ? 'Sim' : 'Não'}
+
+Formato: "Cliente [Nome], atua em [Segmento], busca [Necessidade]. [Produtos]. Contato: [Wpp/Email]. Próximo passo: [Ação]."
+`;
+
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent(summaryPrompt);
+      return result.response.text().trim();
+    } catch (error) {
+      console.error("Erro ao gerar resumo comercial:", error);
+      return null;
+    }
+  },
+
+  /**
+   * Sincroniza os dados extraídos com o banco de dados de forma incremental.
    */
   async updateLead(sessionId: string, deterministicData: Partial<ExtractedLeadData>, aiData: ExtractedLeadData | null) {
-    const mergedData = {
-      ...aiData,
-      ...deterministicData, // Regex tem prioridade em campos exatos como email/tel
-    };
+    try {
+      // 1. Busca lead atual para não sobrescrever dados válidos
+      const currentLead = await prisma.lead.findUnique({
+        where: { sessionId },
+        include: { summary: true }
+      });
 
-    // Remove campos nulos para não sobrescrever dados existentes com null
-    const cleanData = Object.fromEntries(
-      Object.entries(mergedData).filter(([_, v]) => v != null)
-    );
+      const mergedData = {
+        ...aiData,
+        ...deterministicData, // Regex tem prioridade em campos exatos
+      };
 
-    if (Object.keys(cleanData).length === 0) return null;
+      // 2. Lógica de "Não Sobrescrever Válido por Vazio"
+      const updateData: any = {};
+      
+      const fields: (keyof ExtractedLeadData)[] = ['name', 'whatsapp', 'email', 'segment', 'companyName', 'interestSummary', 'status'];
+      
+      fields.forEach(field => {
+        if (mergedData[field] && (!currentLead || !currentLead[field as keyof typeof currentLead])) {
+          updateData[field] = mergedData[field];
+        }
+      });
 
-    return await prisma.lead.upsert({
-      where: { sessionId },
-      create: {
-        sessionId,
-        name: cleanData.name as string,
-        whatsapp: cleanData.whatsapp as string,
-        email: cleanData.email as string,
-        segment: cleanData.segment as string,
-        companyName: cleanData.companyName as string,
-        interestSummary: cleanData.interestSummary as string,
-        productsOfInterest: Array.isArray(cleanData.productsOfInterest) 
-          ? cleanData.productsOfInterest.join(', ') 
-          : cleanData.productsOfInterest as string,
-        status: (cleanData.status as string) || "NEW",
-        qualificationScore: (cleanData.qualificationScore as number) || 0,
-        lastInteractionAt: new Date(),
-      },
-      update: {
-        ...cleanData,
-        productsOfInterest: Array.isArray(cleanData.productsOfInterest) 
-          ? cleanData.productsOfInterest.join(', ') 
-          : cleanData.productsOfInterest as string,
-        lastInteractionAt: new Date(),
-      },
-    });
+      // Tratamento especial para produtos (acumulativo)
+      if (mergedData.productsOfInterest) {
+        const newProducts = Array.isArray(mergedData.productsOfInterest) 
+          ? mergedData.productsOfInterest.join(', ') 
+          : mergedData.productsOfInterest;
+        
+        if (!currentLead?.productsOfInterest) {
+          updateData.productsOfInterest = newProducts;
+        } else if (newProducts && !currentLead.productsOfInterest.includes(newProducts)) {
+          updateData.productsOfInterest = `${currentLead.productsOfInterest}, ${newProducts}`;
+        }
+      }
+
+      // 3. Upsert Inicial/Dados Básicos
+      const lead = await prisma.lead.upsert({
+        where: { sessionId },
+        create: {
+          sessionId,
+          name: updateData.name || null,
+          whatsapp: updateData.whatsapp || null,
+          email: updateData.email || null,
+          segment: updateData.segment || null,
+          companyName: updateData.companyName || null,
+          interestSummary: updateData.interestSummary || null,
+          productsOfInterest: updateData.productsOfInterest || null,
+          status: updateData.status || "NEW",
+          qualificationScore: 0,
+          lastInteractionAt: new Date(),
+        },
+        update: {
+          ...updateData,
+          lastInteractionAt: new Date(),
+        },
+      });
+
+      // 4. Recalcular Score e Status
+      const { score, status } = this.calculateScore(lead);
+      
+      // 5. Gerar Resumo se houver dados mínimos (Score > 20)
+      let aiSummary = null;
+      if (score > 20) {
+        aiSummary = await this.generateCommercialSummary(sessionId, lead);
+      }
+
+      // 6. Persistência Final do Score e Resumo
+      return await prisma.lead.update({
+        where: { id: lead.id },
+        data: {
+          qualificationScore: score,
+          status: status, // Sobrescreve status sugerido pela IA pelo status calculado por score
+          summary: aiSummary ? {
+            upsert: {
+              create: { summary: aiSummary, lastAiUpdateAt: new Date() },
+              update: { summary: aiSummary, lastAiUpdateAt: new Date() }
+            }
+          } : undefined
+        }
+      });
+
+    } catch (error) {
+      console.error("Erro crítico na persistência do lead:", error);
+      return null;
+    }
   },
 
   async getLeadBySession(sessionId: string) {
