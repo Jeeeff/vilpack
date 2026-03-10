@@ -15,7 +15,7 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black border-b border-zinc-800 transition-all duration-300 pb-4">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-black transition-all duration-300 pb-4">
         <div className="container mx-auto flex items-center justify-between h-24 px-4 pt-2">
           <a href="#inicio" className="flex items-center">
             <img src={vilpackLogo} alt="VILPACK" className="h-20 w-auto object-contain" />
@@ -67,7 +67,7 @@ const Navbar = () => {
       {/* Spacer to push content down - Height of Navbar (h-24 + pb-4 = approx 7rem/112px) */}
       <div className="w-full h-32 bg-black"></div>
       {/* Black Strip/Breathing Room */}
-      <div className="w-full h-8 bg-black"></div>
+      <div className="w-full h-1 bg-black"></div>
     </>
   );
 };
