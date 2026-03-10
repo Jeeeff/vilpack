@@ -11,5 +11,15 @@ export const aiController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  async history(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { sessionId } = req.params;
+      const history = await aiService.getChatHistory(sessionId);
+      res.json(history);
+    } catch (error) {
+      next(error);
+    }
   }
 };

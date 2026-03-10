@@ -39,25 +39,56 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Load session from localStorage on mount
+  // Load session and history from backend on mount
   useEffect(() => {
-    const savedSessionId = localStorage.getItem('vilpack_session_id');
-    if (savedSessionId) {
-      setSessionId(savedSessionId);
-      // Optional: Fetch history if backend supports it
-    }
+    const initChat = async () => {
+      const savedSessionId = localStorage.getItem('vilpack_session_id');
+      if (savedSessionId) {
+        setSessionId(savedSessionId);
+        try {
+          const res = await fetch(`${API_URL}/ai/history/${savedSessionId}`);
+          if (res.ok) {
+            const history = await res.json();
+            const formattedHistory = history.map((msg: any) => ({
+              id: msg.id,
+              sender: msg.role === 'assistant' ? 'assistant' : 'user',
+              text: msg.content,
+              timestamp: new Date(msg.createdAt),
+              isOrderSummary: msg.content.includes('### [RESUMO_FINAL]'),
+              summaryContent: msg.content.includes('### [RESUMO_FINAL]') ? msg.content : undefined
+            }));
+            setMessages(formattedHistory);
+          } else if (res.status === 404) {
+            localStorage.removeItem('vilpack_session_id');
+            setSessionId(null);
+          }
+        } catch (error) {
+          console.error("Erro ao carregar histórico:", error);
+        }
+      }
+    };
+    initChat();
   }, []);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom with better timing
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+      const scrollContainer = scrollRef.current.closest('.flex-1');
+      if (scrollContainer) {
+        setTimeout(() => {
+          scrollContainer.scrollTo({
+            top: scrollContainer.scrollHeight,
+            behavior: 'smooth'
+          });
+        }, 100);
+      }
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, isTyping]);
 
   // Focus input when open
   useEffect(() => {
@@ -104,6 +135,7 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
     setMessages((prev) => [...prev, userMsg]);
     setInputValue('');
     setIsLoading(true);
+    setIsTyping(true);
 
     try {
       let currentSessionId = sessionId;
@@ -111,6 +143,7 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
         currentSessionId = await createSession();
         if (!currentSessionId) {
             setIsLoading(false);
+            setIsTyping(false);
             return;
         }
       }
@@ -141,24 +174,29 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                         }),
                    });
                    if (retryRes.ok) {
-                       const data = await retryRes.json();
-                       addAssistantMessage(data.reply, currentSessionId);
-                       setIsLoading(false);
-                       return;
+                        const data = await retryRes.json();
+                        addAssistantMessage(data.reply);
                    }
               }
+          } else {
+            throw new Error('Falha na resposta do servidor');
           }
-          throw new Error('Erro na resposta da IA');
+      } else {
+        const data = await res.json();
+        addAssistantMessage(data.reply);
       }
-
-      const data = await res.json();
-      addAssistantMessage(data.reply, currentSessionId);
-
     } catch (error) {
-      console.error('Erro ao enviar mensagem:', error);
-      addAssistantMessage("Desculpe, tive um problema técnico. Pode tentar novamente?", sessionId || '');
+      console.error('Chat error:', error);
+      toast({
+        title: "Erro no chat",
+        description: "Não foi possível enviar sua mensagem. Tente novamente.",
+        variant: "destructive",
+      });
+      // Remove the last message from UI if it failed to send? 
+      // User choice, usually better to keep but mark as failed.
     } finally {
       setIsLoading(false);
+      setIsTyping(false);
       // Mantém o foco no input após enviar
       setTimeout(() => {
         inputRef.current?.focus();
@@ -166,48 +204,17 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
     }
   };
 
-  const saveDraftOrder = async (summary: string, sid: string) => {
-    try {
-      if (!sid) return;
-      
-      await fetch(`${API_URL}/order/draft`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: sid,
-          orderSummary: summary,
-        }),
-      });
-    } catch (error) {
-      console.error('Erro ao salvar rascunho:', error);
-    }
-  };
-
-  const addAssistantMessage = (text: string, sid: string) => {
-    let cleanText = text;
-    let isOrderSummary = false;
-    let summaryContent = '';
-
-    if (text.includes('### [RESUMO_FINAL]')) {
-      const parts = text.split('### [RESUMO_FINAL]');
-      cleanText = parts[0].trim();
-      summaryContent = parts[1] ? parts[1].trim() : '';
-      isOrderSummary = true;
-      
-      saveDraftOrder(summaryContent, sid);
-    }
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        sender: 'assistant',
-        text: cleanText,
-        timestamp: new Date(),
-        isOrderSummary,
-        summaryContent,
-      },
-    ]);
+  const addAssistantMessage = (text: string) => {
+    const isOrderSummary = text.includes('### [RESUMO_FINAL]');
+    const assistantMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      sender: 'assistant',
+      text: text,
+      timestamp: new Date(),
+      isOrderSummary,
+      summaryContent: isOrderSummary ? text : undefined,
+    };
+    setMessages((prev) => [...prev, assistantMsg]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -223,122 +230,136 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 animate-bounce-slow"
+          className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 bg-primary hover:bg-primary/90 text-white transition-all duration-500 hover:scale-110 active:scale-95 animate-bounce-slow flex flex-col items-center justify-center gap-0.5 border-2 border-white/20"
           size="icon"
         >
-          <MessageCircle className="h-8 w-8" />
+          <MessageCircle className="h-7 w-7" />
+          <span className="text-[10px] font-bold uppercase tracking-tighter">Vik</span>
         </Button>
       )}
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-20 right-4 w-[90vw] md:w-[450px] h-[600px] max-h-[80vh] shadow-2xl z-50 flex flex-col border-primary/20 animate-in slide-in-from-bottom-10 fade-in duration-300">
-          <CardHeader className="bg-primary text-primary-foreground p-4 rounded-t-lg flex flex-row items-center justify-between shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-2 rounded-full">
-                <Store className="h-6 w-6 text-white" />
+        <Card className="fixed bottom-4 right-4 md:bottom-6 md:right-6 w-[calc(100vw-32px)] md:w-[420px] h-[85vh] md:h-[650px] max-h-[90vh] shadow-[-20px_20px_60px_rgba(0,0,0,0.15)] z-50 flex flex-col border-none overflow-hidden rounded-3xl animate-in slide-in-from-bottom-10 fade-in duration-500">
+          <CardHeader className="bg-primary text-primary-foreground p-5 flex flex-row items-center justify-between shrink-0 shadow-lg relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-sm border border-white/10">
+                  <Store className="h-6 w-6 text-white" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 border-2 border-primary rounded-full"></div>
               </div>
               <div>
-                <CardTitle className="text-lg">Vik Assistente</CardTitle>
-                <p className="text-xs text-primary-foreground/80">Consultora de Embalagens</p>
+                <CardTitle className="text-xl font-bold tracking-tight">Consultoria Vik</CardTitle>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-1.5 w-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                  <p className="text-xs text-primary-foreground/70 font-medium">Online e pronta para ajudar</p>
+                </div>
               </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsOpen(false)}
-              className="text-white hover:bg-white/20"
+              className="text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
             >
               <X className="h-6 w-6" />
             </Button>
           </CardHeader>
 
-          <CardContent className="flex-1 p-0 overflow-hidden bg-slate-50 relative">
-            <ScrollArea className="h-full p-4">
-              {messages.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground mt-20 space-y-4 opacity-70">
-                  <Store className="h-16 w-16 text-primary/20" />
-                  <p>Olá! Sou a Vik, a assistente virtual da Vilpack.</p>
-                  <p>Posso te ajudar a encontrar as melhores embalagens para o seu negócio.</p>
-                </div>
-              )}
-              
-              <div className="space-y-4 pb-4">
+          <CardContent className="flex-1 overflow-hidden p-0 bg-slate-50/50 relative">
+            <ScrollArea className="h-full w-full">
+              <div className="p-4 space-y-6">
+                {/* Welcome Message if no history */}
+                {messages.length === 0 && !isLoading && (
+                   <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
+                      <div className="bg-primary/10 p-4 rounded-full">
+                        <MessageCircle className="h-8 w-8 text-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-bold text-slate-800">Olá! Sou a Vik.</p>
+                        <p className="text-sm text-slate-500 max-w-[200px]">Especialista em embalagens Vilpack. Como posso ajudar seu negócio hoje?</p>
+                      </div>
+                   </div>
+                )}
+                
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
                     className={cn(
-                      "flex w-full",
+                      "flex w-full animate-in fade-in slide-in-from-bottom-2 duration-300",
                       msg.sender === 'user' ? "justify-end" : "justify-start"
                     )}
                   >
                     <div
                       className={cn(
-                        "max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm",
+                        "max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm transition-all",
                         msg.sender === 'user'
                           ? "bg-primary text-primary-foreground rounded-br-none"
-                          : "bg-white border border-slate-200 text-slate-800 rounded-bl-none"
+                          : "bg-white border border-slate-100 text-slate-800 rounded-bl-none"
                       )}
                     >
                       <div className="whitespace-pre-wrap leading-relaxed">
-                        {/* Markdown parsing for bold and images */}
+                        {/* Markdown parsing logic remains the same but UI updated */}
                         {msg.text.split(/(!\[.*?\]\(.*?\))|(\*\*.*?\*\*)/g).filter(Boolean).map((part, i) => {
                             if (part.startsWith('![') && part.includes('](') && part.endsWith(')')) {
-                                // Image handling: ![alt](url)
                                 const altEndIndex = part.indexOf('](');
                                 const alt = part.substring(2, altEndIndex);
                                 const url = part.substring(altEndIndex + 2, part.length - 1);
                                 return (
-                                  <div key={i} className="my-2 rounded-lg overflow-hidden border border-slate-200 shadow-sm bg-white">
-                                    <img 
-                                      src={url} 
-                                      alt={alt} 
-                                      className="w-full h-auto object-cover max-h-[200px]" 
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = 'none';
-                                        (e.target as HTMLImageElement).parentElement!.style.display = 'none';
-                                      }}
-                                    />
-                                    {alt && <div className="bg-slate-50 px-2 py-1 text-[10px] text-muted-foreground text-center border-t border-slate-100">{alt}</div>}
+                                  <div key={i} className="my-3 rounded-xl overflow-hidden border border-slate-100 shadow-md bg-white group cursor-pointer transition-transform hover:scale-[1.02]">
+                                    <img src={url} alt={alt} className="w-full h-auto object-cover max-h-48" />
+                                    <div className="p-2 bg-slate-50 text-[10px] text-slate-400 italic text-center border-t border-slate-100">
+                                        {alt}
+                                    </div>
                                   </div>
                                 );
                             }
                             if (part.startsWith('**') && part.endsWith('**')) {
-                                return <strong key={i}>{part.slice(2, -2)}</strong>;
+                                return <strong key={i} className="font-bold text-primary">{part.slice(2, -2)}</strong>;
                             }
-                            return <span key={i}>{part}</span>;
+                            return part;
                         })}
+                        
                         {msg.isOrderSummary && (
-                          <div className="mt-4 pt-4 border-t border-slate-200">
-                              <div className="bg-slate-50 p-3 rounded-md text-xs text-slate-600 mb-3 font-mono whitespace-pre-wrap border border-slate-200">
-                                  {msg.summaryContent}
+                          <div className="mt-4 p-4 bg-slate-50 rounded-xl border-2 border-dashed border-primary/20 space-y-4">
+                              <div className="flex items-center gap-2 text-primary font-bold">
+                                 <Store className="h-4 w-4" />
+                                 <span>Proposta Vilpack</span>
                               </div>
                               <Button 
-                                  className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold py-6 text-base shadow-md transition-all duration-300 hover:shadow-lg flex items-center justify-center gap-2"
+                                  className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold py-7 text-base shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-95 flex flex-col items-center justify-center gap-0 leading-tight rounded-xl"
                                   onClick={() => {
                                       const phone = "5511999999999"; 
                                       const text = encodeURIComponent(msg.summaryContent || '');
-                                      // Using window.location.href instead of window.open to prevent permission prompts
                                       window.location.href = `https://wa.me/${phone}?text=${text}`;
                                   }}
                               >
-                                  <MessageCircle className="h-5 w-5 fill-current" />
-                                  Enviar Pedido via WhatsApp
+                                  <div className="flex items-center gap-2">
+                                    <MessageCircle className="h-5 w-5 fill-current" />
+                                    <span>Finalizar no WhatsApp</span>
+                                  </div>
+                                  <span className="text-[10px] opacity-80 font-normal">Falar com consultor humano</span>
                               </Button>
                           </div>
                         )}
                       </div>
-                      <span className="text-[10px] opacity-70 mt-1 block text-right">
+                      <span className="text-[10px] opacity-50 mt-2 block text-right font-medium">
                         {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   </div>
                 ))}
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      <span className="text-xs text-muted-foreground">Digitando...</span>
+                
+                {isTyping && (
+                  <div className="flex justify-start animate-in fade-in duration-300">
+                    <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <div className="h-1.5 w-1.5 bg-primary/40 rounded-full animate-bounce"></div>
+                        <div className="h-1.5 w-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                        <div className="h-1.5 w-1.5 bg-primary/80 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                      </div>
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Vik digitando</span>
                     </div>
                   </div>
                 )}
@@ -347,23 +368,29 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
             </ScrollArea>
           </CardContent>
 
-          <CardFooter className="p-3 bg-white border-t">
-            <div className="flex w-full gap-2">
-              <Input
-                ref={inputRef}
-                placeholder="Digite sua dúvida..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="flex-1"
-                disabled={isLoading}
-              />
+          <CardFooter className="p-4 bg-white border-t border-slate-100 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+            <div className="flex w-full gap-2 items-end">
+              <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-200 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all overflow-hidden">
+                <Input
+                  ref={inputRef}
+                  placeholder="Descreva o que sua marca precisa..."
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="border-none focus-visible:ring-0 bg-transparent py-6 h-auto text-sm"
+                  disabled={isLoading}
+                />
+              </div>
               <Button 
                 onClick={handleSendMessage} 
                 disabled={isLoading || !inputValue.trim()}
-                size="icon"
+                className="h-12 w-12 rounded-xl shadow-md transition-all active:scale-90 shrink-0"
               >
-                <Send className="h-5 w-5" />
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
               </Button>
             </div>
           </CardFooter>
