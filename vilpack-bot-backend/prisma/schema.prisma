@@ -67,8 +67,12 @@ model Lead {
   companyName        String?
   interestSummary    String?
   productsOfInterest String?
+  internalNotes      String?    
   leadSource         String     @default("chat_vik")
-  status             String     @default("NEW") // NEW, ENGAGED, QUALIFIED, WAITING_HUMAN, CONVERTED, LOST
+  status             String     @default("NEW") 
+  priority           String     @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  isRead             Boolean    @default(false)    // Controle de notificações
+  followUpAt         DateTime?                     // Agendamento de follow-up
   qualificationScore Int        @default(0)
   lastInteractionAt  DateTime   @default(now())
   createdAt          DateTime   @default(now())

@@ -32,8 +32,11 @@ export const adminController = {
   async getLead(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const lead = await prisma.lead.findUnique({
+      
+      // Marca como lido ao abrir os detalhes
+      const lead = await prisma.lead.update({
         where: { id },
+        data: { isRead: true },
         include: {
           summary: true,
           session: {
@@ -50,6 +53,25 @@ export const adminController = {
         res.status(404).json({ error: 'Lead não encontrado' });
         return;
       }
+
+      res.json(lead);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Atualiza a prioridade do lead manualmente
+   */
+  async updatePriority(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const { priority } = req.body;
+
+      const lead = await prisma.lead.update({
+        where: { id },
+        data: { priority }
+      });
 
       res.json(lead);
     } catch (error) {
@@ -77,8 +99,7 @@ export const adminController = {
   },
 
   /**
-   * Adiciona notas manuais ao lead (usando o campo interestSummary ou criando um novo se necessário)
-   * Por enquanto, vamos atualizar o interestSummary ou companyName conforme necessidade.
+   * Adiciona notas manuais ao lead
    */
   async updateNotes(req: Request, res: Response, next: NextFunction) {
     try {
@@ -87,7 +108,7 @@ export const adminController = {
 
       const lead = await prisma.lead.update({
         where: { id },
-        data: { interestSummary: notes } // Reaproveitando campo para notas por enquanto
+        data: { internalNotes: notes }
       });
 
       res.json(lead);

@@ -7,6 +7,7 @@ const router = Router();
 router.get('/leads', adminController.listLeads);
 router.get('/leads/:id', adminController.getLead);
 router.patch('/leads/:id/status', adminController.updateStatus);
+router.patch('/leads/:id/priority', adminController.updatePriority);
 router.patch('/leads/:id/notes', adminController.updateNotes);
 
 export default router;

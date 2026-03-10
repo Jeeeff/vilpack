@@ -98,7 +98,7 @@ Vik (resposta): ${assistantReply}
   /**
    * Calcula o score do lead baseado nos campos preenchidos e contexto.
    */
-  calculateScore(lead: any): { score: number; status: string } {
+  calculateScore(lead: any): { score: number; status: string; priority: string } {
     let score = 0;
     
     if (lead.name) score += 10;
@@ -111,11 +111,20 @@ Vik (resposta): ${assistantReply}
     if (lead.status === 'WAITING_HUMAN' || lead.status === 'QUALIFIED') score += 15;
 
     let status = 'NEW';
-    if (score >= 75) status = 'WAITING_HUMAN';
-    else if (score >= 50) status = 'QUALIFIED';
-    else if (score >= 25) status = 'ENGAGED';
+    let priority = 'LOW';
 
-    return { score: Math.min(score, 100), status };
+    if (score >= 75) {
+      status = 'WAITING_HUMAN';
+      priority = 'URGENT';
+    } else if (score >= 50) {
+      status = 'QUALIFIED';
+      priority = 'HIGH';
+    } else if (score >= 25) {
+      status = 'ENGAGED';
+      priority = 'MEDIUM';
+    }
+
+    return { score: Math.min(score, 100), status, priority };
   },
 
   /**
@@ -124,16 +133,22 @@ Vik (resposta): ${assistantReply}
   async generateCommercialSummary(sessionId: string, lead: any): Promise<string | null> {
     try {
       const summaryPrompt = `
-Gere um resumo comercial curto e operacional para o time de vendas.
+Gere um resumo comercial estratégico e operacional para o time de vendas da Vilpack.
+Analise os dados abaixo e crie um briefing que ajude o vendedor a entender o valor do cliente e como abordá-lo.
+
 Dados do Lead:
 - Nome: ${lead.name || 'Não informado'}
 - Segmento: ${lead.segment || 'Não informado'}
 - Necessidade: ${lead.interestSummary || 'Não detalhada'}
 - Produtos citados: ${lead.productsOfInterest || 'Nenhum'}
-- WhatsApp: ${lead.whatsapp ? 'Sim' : 'Não'}
-- Email: ${lead.email ? 'Sim' : 'Não'}
+- WhatsApp: ${lead.whatsapp || 'Não informado'}
+- Email: ${lead.email || 'Não informado'}
+- Score de Qualificação: ${lead.qualificationScore}/100
 
-Formato: "Cliente [Nome], atua em [Segmento], busca [Necessidade]. [Produtos]. Contato: [Wpp/Email]. Próximo passo: [Ação]."
+Formato:
+"O cliente [Nome], do segmento de [Segmento], demonstrou interesse em [Produtos]. A necessidade principal identificada foi [Necessidade]. O lead possui score [Score], sendo classificado como um potencial cliente [Temperatura: Frio/Morno/Quente]. Próximo passo sugerido: [Ação comercial direta]."
+
+Seja conciso, profissional e use um tom de consultoria comercial.
 `;
 
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -167,21 +182,40 @@ Formato: "Cliente [Nome], atua em [Segmento], busca [Necessidade]. [Produtos]. C
       const fields: (keyof ExtractedLeadData)[] = ['name', 'whatsapp', 'email', 'segment', 'companyName', 'interestSummary', 'status'];
       
       fields.forEach(field => {
-        if (mergedData[field] && (!currentLead || !currentLead[field as keyof typeof currentLead])) {
-          updateData[field] = mergedData[field];
+        const newValue = mergedData[field];
+        const currentValue = currentLead ? (currentLead as any)[field] : null;
+
+        // Se o novo valor existir e for diferente do atual, atualiza
+        if (newValue && newValue !== currentValue) {
+          // Se for status, só atualiza se for "mais avançado" (ex: de NEW para ENGAGED)
+          if (field === 'status') {
+            const statusOrder = ['NEW', 'ENGAGED', 'QUALIFIED', 'WAITING_HUMAN', 'CONVERTED', 'LOST'];
+            const currentIndex = statusOrder.indexOf(currentValue || 'NEW');
+            const newIndex = statusOrder.indexOf(newValue as string);
+            if (newIndex > currentIndex) {
+              updateData[field] = newValue;
+            }
+          } else {
+            updateData[field] = newValue;
+          }
         }
       });
 
-      // Tratamento especial para produtos (acumulativo)
+      // Tratamento especial para produtos (acumulativo e sem duplicatas)
       if (mergedData.productsOfInterest) {
-        const newProducts = Array.isArray(mergedData.productsOfInterest) 
-          ? mergedData.productsOfInterest.join(', ') 
-          : mergedData.productsOfInterest;
+        const newProductsArray = Array.isArray(mergedData.productsOfInterest) 
+          ? mergedData.productsOfInterest 
+          : (mergedData.productsOfInterest as string).split(',').map(p => p.trim());
         
-        if (!currentLead?.productsOfInterest) {
-          updateData.productsOfInterest = newProducts;
-        } else if (newProducts && !currentLead.productsOfInterest.includes(newProducts)) {
-          updateData.productsOfInterest = `${currentLead.productsOfInterest}, ${newProducts}`;
+        const currentProductsArray = currentLead?.productsOfInterest 
+          ? currentLead.productsOfInterest.split(',').map(p => p.trim()) 
+          : [];
+
+        const combinedProducts = Array.from(new Set([...currentProductsArray, ...newProductsArray]))
+          .filter(p => p && p.length > 2);
+
+        if (combinedProducts.length > currentProductsArray.length) {
+          updateData.productsOfInterest = combinedProducts.join(', ');
         }
       }
 
@@ -207,8 +241,8 @@ Formato: "Cliente [Nome], atua em [Segmento], busca [Necessidade]. [Produtos]. C
         },
       });
 
-      // 4. Recalcular Score e Status
-      const { score, status } = this.calculateScore(lead);
+      // 4. Recalcular Score, Status e Prioridade
+      const { score, status, priority } = this.calculateScore(lead);
       
       // 5. Gerar Resumo se houver dados mínimos (Score > 20)
       let aiSummary = null;
@@ -216,12 +250,14 @@ Formato: "Cliente [Nome], atua em [Segmento], busca [Necessidade]. [Produtos]. C
         aiSummary = await this.generateCommercialSummary(sessionId, lead);
       }
 
-      // 6. Persistência Final do Score e Resumo
+      // 6. Persistência Final
       return await prisma.lead.update({
         where: { id: lead.id },
         data: {
           qualificationScore: score,
-          status: status, // Sobrescreve status sugerido pela IA pelo status calculado por score
+          status: status,
+          priority: priority,
+          isRead: false, // Nova interação torna o lead "não lido"
           summary: aiSummary ? {
             upsert: {
               create: { summary: aiSummary, lastAiUpdateAt: new Date() },
