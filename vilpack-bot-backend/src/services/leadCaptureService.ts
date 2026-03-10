@@ -80,13 +80,21 @@ Cliente (última): ${userMessage}
 Vik (resposta): ${assistantReply}
 `;
 
-      const model = genAI.getGenerativeModel({ 
+      const response = await genAI.models.generateContent({
         model: "gemini-1.5-flash",
-        generationConfig: { responseMimeType: "application/json" }
+        config: {
+          responseMimeType: "application/json"
+        },
+        contents: [
+          { role: "user", parts: [{ text: extractionPrompt }] }
+        ]
       });
 
-      const result = await model.generateContent(extractionPrompt);
-      const data = JSON.parse(result.response.text());
+      if (!response.text) {
+        throw new Error("Resposta vazia da IA na extração");
+      }
+
+      const data = JSON.parse(response.text);
       
       return data;
     } catch (error) {
@@ -151,9 +159,18 @@ Formato:
 Seja conciso, profissional e use um tom de consultoria comercial.
 `;
 
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await model.generateContent(summaryPrompt);
-      return result.response.text().trim();
+      const response = await genAI.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: [
+          { role: "user", parts: [{ text: summaryPrompt }] }
+        ]
+      });
+
+      if (!response.text) {
+        throw new Error("Resposta vazia da IA no resumo");
+      }
+
+      return response.text.trim();
     } catch (error) {
       console.error("Erro ao gerar resumo comercial:", error);
       return null;

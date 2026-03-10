@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Starting seed (Phase 1)...');
+  console.log('🌱 Starting seed...');
 
   // 1. Clean up existing data
   console.log('🗑️  Cleaning up old data...');
@@ -21,8 +22,22 @@ async function main() {
   await prisma.cartItem.deleteMany({});
   await prisma.product.deleteMany({});
   await prisma.category.deleteMany({});
+  await prisma.adminUser.deleteMany({});
   
-  // 2. Create/Update Store
+  // 2. Create Admin User
+  const adminPassword = process.env.ADMIN_PASSWORD || 'vilpack2026';
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+  
+  await prisma.adminUser.create({
+    data: {
+      username: 'admin',
+      password: hashedPassword,
+      role: 'MASTER'
+    }
+  });
+  console.log('✅ Admin user created: admin /', adminPassword);
+
+  // 3. Create/Update Store
   const store = await prisma.store.upsert({
     where: { slug: 'vilpack' },
     update: {},
