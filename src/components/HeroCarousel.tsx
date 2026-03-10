@@ -20,16 +20,18 @@ const heroSlides = [
     buttonColor: "primary",
     desktopTop: "79%",
     desktopLeft: "83%",
+    mobileTop: "88%",
     mobileBg: "#3A3A3A" // Cinza Escuro exato (Sacola)
   },
   {
     id: 2,
     image: "/slide_pao.jpg",
-    mobileImage: "/slide_pao_mobile.jpg", // Fallback enquanto não temos a imagem mobile específica
+    mobileImage: "/slide_pao_mobile.jpg",
     alt: "Sacos de Pão",
     buttonColor: "dark",
     desktopTop: "78%",
     desktopLeft: "81%",
+    mobileTop: "85%",
     mobileBg: "#FDB913" // Amarelo exato (Pão)
   },
   {
@@ -40,6 +42,7 @@ const heroSlides = [
     buttonColor: "primary",
     desktopTop: "79%",
     desktopLeft: "83%",
+    mobileTop: "88%",
     mobileBg: "#3A3A3A"
   }
 ];
@@ -83,32 +86,40 @@ const HeroCarousel = () => {
             <CarouselItem key={slide.id} className="h-auto w-full flex-shrink-0 relative p-0 border-0 pl-0 pt-0 bg-black">
               
               {/* --- MOBILE VIEW --- */}
-              <div className="md:hidden flex flex-col w-full h-auto bg-black">
-                {/* Main Mobile Image - Block & Auto Height */}
-                <div className="w-full relative bg-black overflow-hidden">
+              <div className="md:hidden relative w-full h-[88vh] bg-black overflow-hidden flex flex-col">
+                {/* Camada da Imagem/Arte - Ocupa a maior parte da viewport */}
+                <div className="relative flex-1 w-full overflow-hidden">
                   <img 
                     src={slide.mobileImage || slide.image} 
                     alt={slide.alt} 
-                    className="w-full h-auto block"
+                    className="w-full h-full object-cover object-center block"
                   />
+                  {/* Overlay gradiente suave para integrar com o rodapé se necessário */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20" />
                 </div>
 
-                {/* Footer Button Container - Matches Slide Footer Color with Negative Margin Overlap */}
+                {/* Camada Inferior de Apoio Visual (Rodapé do Slide) */}
                 <div 
-                  className="w-full py-8 flex justify-center items-center shrink-0 relative z-10 -mt-2"
+                  className="w-full h-[15vh] shrink-0 relative z-10 -mt-4 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.3)]"
                   style={{ backgroundColor: slide.mobileBg }}
                 >
-                  <Button 
-                    size="lg" 
-                    asChild 
-                    className={`text-lg font-bold uppercase tracking-wider px-10 py-7 rounded-full shadow-[0_4px_14px_0_rgba(0,0,0,0.39)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)] hover:-translate-y-1 transition-all duration-300 border-2 border-white/20 backdrop-blur-sm
-                      ${slide.buttonColor === 'dark' 
-                        ? 'bg-zinc-800 hover:bg-zinc-900 text-white' 
-                        : 'bg-primary hover:bg-primary/90 text-zinc-900'
-                      }`}
+                  {/* O Botão CTA - Posicionamento Absoluto Controlado dentro do Rodapé */}
+                  <div 
+                    className="absolute left-1/2 -translate-x-1/2"
+                    style={{ top: '40%' }}
                   >
-                    <a href="#produtos">Clique Aqui</a>
-                  </Button>
+                    <Button 
+                      size="lg" 
+                      asChild 
+                      className={`text-lg font-bold uppercase tracking-wider px-10 py-7 rounded-full shadow-[0_10px_25px_-5px_rgba(0,0,0,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(0,0,0,0.5)] active:scale-95 transition-all duration-300 border-2 border-white/20 backdrop-blur-sm
+                        ${slide.buttonColor === 'dark' 
+                          ? 'bg-zinc-800 hover:bg-zinc-900 text-white' 
+                          : 'bg-primary hover:bg-primary/90 text-zinc-900'
+                        }`}
+                    >
+                      <a href="#produtos">Clique Aqui</a>
+                    </Button>
+                  </div>
                 </div>
               </div>
 
