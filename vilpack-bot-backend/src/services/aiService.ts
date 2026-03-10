@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import prisma from "../config/prisma";
+import { leadCaptureService } from "./leadCaptureService";
 
 // Initialize the Google Gen AI SDK
 const genAI = new GoogleGenAI({
@@ -62,25 +63,25 @@ Sua missão é realizar uma consultoria comercial completa e capturar leads qual
 **Sua Personalidade:**
 - **Sofisticada e Profissional:** Use um vocabulário rico, mas acessível.
 - **Consultiva e Proativa:** Entenda o "porquê" para sugerir a melhor solução técnica.
-- **Acolhedora e Feminina:** "Com prazer", "Excelente escolha", "Entendo perfeitamente".
+- **Acolhedora e Humana:** Use expressões como "Com prazer", "Excelente escolha", "Entendo perfeitamente".
 
 🛒 **Catálogo de Soluções Vilpack:**
 ${formattedProducts}
 
-🎯 **Estratégia de Captura Progressiva (NUNCA peça tudo de uma vez):**
-1.  **Início (Nome):** Logo no começo, após a primeira resposta, peça o nome de forma leve: "Para que possamos conversar melhor, como posso te chamar?".
-2.  **Qualificação (Segmento):** Descubra o ramo de atuação: "Excelente, [Nome]. Para te indicar a melhor embalagem, qual o seu segmento?".
-3.  **Necessidade (Interesse):** Identifique o que ele precisa e sugira produtos do catálogo explicando o valor.
-4.  **Contato (WhatsApp/Email):** Quando houver interesse real ou pedido de orçamento, peça o contato: "Perfeito! Para que eu possa te enviar o catálogo completo ou uma proposta formal, qual o seu melhor WhatsApp e e-mail?".
+🎯 **Protocolo Comercial de Captura Progressiva:**
+1.  **Identificação (Nome):** Logo no início, peça o nome de forma leve: "Para que eu possa te atender de forma personalizada, como posso te chamar?".
+2.  **Descoberta (Segmento/Necessidade):** Identifique o ramo do cliente: "Excelente, [Nome]. Qual o segmento do seu negócio? (ex: Padaria, Hamburgueria, Loja)".
+3.  **Consultoria:** Recomende produtos baseados no segmento, focando em branding e valor.
+4.  **Fechamento (WhatsApp/Email):** Quando houver interesse real ou pedido de orçamento, peça o contato: "Perfeito! Para facilitar o envio de orçamentos e catálogos, qual seu WhatsApp e e-mail?".
 
-📜 **Regras de Comportamento:**
-- Se o usuário já informou um dado, NÃO pergunte novamente.
-- Use as informações coletadas para personalizar a conversa (chame pelo nome).
-- Se faltar algo, retome depois com naturalidade.
-- Se o cliente quiser fechar, gere o resumo final.
+📜 **Regras de Ouro:**
+- NÃO faça interrogatório. Peça um dado por vez.
+- Se o usuário já informou algo espontaneamente, NÃO pergunte novamente.
+- Use os dados coletados para personalizar a conversa (ex: use o nome do cliente).
+- Continue ajudando mesmo se o usuário optar por não informar algum dado agora.
 
 Geração de Pedido (Handoff):
-- Após receber Nome e WhatsApp, gere o resumo EXATAMENTE neste formato:
+- Se o cliente quiser fechar, gere o resumo EXATAMENTE neste formato:
     ### [RESUMO_FINAL]
     *   **Consultora:** Vik
     *   **Cliente:** [Nome]
@@ -142,69 +143,18 @@ Geração de Pedido (Handoff):
         throw new Error("Resposta vazia da IA");
       }
 
-      // 🧠 EXTRAÇÃO DE LEAD (Chamada secundária leve para estruturar dados)
+      // 🧠 CAPTURA DE LEAD HÍBRIDA (Determinística + IA)
       try {
-        const leadExtractionPrompt = `
-Extraia dados estruturados de Lead da conversa abaixo. 
-Retorne APENAS um JSON válido. Se não encontrar o dado, retorne null.
-
-Campos:
-- name (nome do cliente)
-- whatsapp (apenas números)
-- email
-- segment (segmento/ramo de atuação)
-- companyName (nome da empresa se citado)
-- interestSummary (resumo do que ele precisa)
-- productsOfInterest (lista de produtos citados)
-- status (NEW, ENGAGED, QUALIFIED, WAITING_HUMAN)
-- qualificationScore (0-100 baseado no interesse e dados fornecidos)
-
-Conversa:
-${history.map(m => `${m.role}: ${m.content}`).join('\n')}
-user: ${message}
-model: ${reply}
-`;
-
-        const leadResult = await genAI.models.generateContent({
-          model: "gemini-2.5-flash",
-          config: { temperature: 0, responseMimeType: "application/json" },
-          contents: [{ role: "user", parts: [{ text: leadExtractionPrompt }] }]
-        });
-
-        const leadData = JSON.parse(leadResult.text);
-
-        if (leadData) {
-          await prisma.lead.upsert({
-            where: { sessionId },
-            create: {
-              sessionId,
-              name: leadData.name,
-              whatsapp: leadData.whatsapp,
-              email: leadData.email,
-              segment: leadData.segment,
-              companyName: leadData.companyName,
-              interestSummary: leadData.interestSummary,
-              productsOfInterest: Array.isArray(leadData.productsOfInterest) ? leadData.productsOfInterest.join(', ') : leadData.productsOfInterest,
-              status: leadData.status || "NEW",
-              qualificationScore: leadData.qualificationScore || 0,
-              lastInteractionAt: new Date(),
-            },
-            update: {
-              name: leadData.name || undefined,
-              whatsapp: leadData.whatsapp || undefined,
-              email: leadData.email || undefined,
-              segment: leadData.segment || undefined,
-              companyName: leadData.companyName || undefined,
-              interestSummary: leadData.interestSummary || undefined,
-              productsOfInterest: Array.isArray(leadData.productsOfInterest) ? leadData.productsOfInterest.join(', ') : leadData.productsOfInterest || undefined,
-              status: leadData.status || undefined,
-              qualificationScore: leadData.qualificationScore || undefined,
-              lastInteractionAt: new Date(),
-            }
-          });
-        }
+        // Camada 1: Regex
+        const deterministicData = leadCaptureService.extractDeterministicData(message);
+        
+        // Camada 2: IA Estruturada
+        const aiLeadData = await leadCaptureService.extractAiData(sessionId, message, reply);
+        
+        // Persistência/Update
+        await leadCaptureService.updateLead(sessionId, deterministicData, aiLeadData);
       } catch (e) {
-        console.error("Erro na extração de lead:", e);
+        console.error("Erro no fluxo de captura de lead:", e);
       }
 
       // 💾 Salva mensagens no banco

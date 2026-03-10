@@ -1,74 +1,98 @@
-import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from 'express';
 import prisma from '../config/prisma';
-import bcrypt from 'bcryptjs';
 
-export const login = async (req: Request, res: Response) => {
-  console.log("Login Request Body:", req.body);
-  const { username, password } = req.body;
-  
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
-  }
-
-  try {
-    const user = await prisma.adminUser.findUnique({ where: { username } });
-    
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+export const adminController = {
+  /**
+   * Lista todos os leads com paginação e filtros básicos
+   */
+  async listLeads(req: Request, res: Response, next: NextFunction) {
+    try {
+      const leads = await prisma.lead.findMany({
+        orderBy: { lastInteractionAt: 'desc' },
+        include: {
+          summary: true,
+          session: {
+            select: {
+              _count: {
+                select: { messages: true }
+              }
+            }
+          }
+        }
+      });
+      res.json(leads);
+    } catch (error) {
+      next(error);
     }
+  },
 
-    const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '24h' }
-    );
-    
-    res.json({ token, user: { username: user.username, role: user.role } });
-  } catch (error) {
-    res.status(500).json({ error: 'Erro ao realizar login' });
-  }
-};
+  /**
+   * Detalhes de um lead específico
+   */
+  async getLead(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const lead = await prisma.lead.findUnique({
+        where: { id },
+        include: {
+          summary: true,
+          session: {
+            include: {
+              messages: {
+                orderBy: { createdAt: 'asc' }
+              }
+            }
+          }
+        }
+      });
 
-export const getOrders = async (req: Request, res: Response) => {
-  try {
-    const orders = await prisma.order.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        customerName: true,
-        customerPhone: true,
-        status: true,
-        total: true,
-        createdAt: true,
-        sessionId: true,
+      if (!lead) {
+        res.status(404).json({ error: 'Lead não encontrado' });
+        return;
       }
-    });
-    res.json(orders);
-  } catch (error) {
-    res.status(500).json({ error: 'Erro ao buscar pedidos' });
-  }
-};
 
-export const getOrderChat = async (req: Request, res: Response) => {
-  const id = req.params.id as string;
-  try {
-    const order = await prisma.order.findUnique({
-      where: { id },
-      select: { sessionId: true }
-    });
-
-    if (!order || !order.sessionId) {
-      return res.status(404).json({ error: 'Pedido ou sessão não encontrada' });
+      res.json(lead);
+    } catch (error) {
+      next(error);
     }
+  },
 
-    const messages = await prisma.message.findMany({
-      where: { sessionId: order.sessionId },
-      orderBy: { createdAt: 'asc' }
-    });
+  /**
+   * Atualiza o status do lead
+   */
+  async updateStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
 
-    res.json(messages);
-  } catch (error) {
-    res.status(500).json({ error: 'Erro ao buscar histórico do chat' });
+      const lead = await prisma.lead.update({
+        where: { id },
+        data: { status }
+      });
+
+      res.json(lead);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Adiciona notas manuais ao lead (usando o campo interestSummary ou criando um novo se necessário)
+   * Por enquanto, vamos atualizar o interestSummary ou companyName conforme necessidade.
+   */
+  async updateNotes(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
+
+      const lead = await prisma.lead.update({
+        where: { id },
+        data: { interestSummary: notes } // Reaproveitando campo para notas por enquanto
+      });
+
+      res.json(lead);
+    } catch (error) {
+      next(error);
+    }
   }
 };
