@@ -20,8 +20,8 @@ const heroSlides = [
     buttonColor: "primary",
     desktopTop: "79%",
     desktopLeft: "83%",
-    mobileButtonBottom: "15.5%",
-    mobileButtonScale: 0.94,
+    mobileButtonBottom: "10.6%",
+    mobileButtonScale: 0.88,
     mobileImagePosition: "center",
     mobileBg: "#3A3A3A" // Cinza Escuro exato (Sacola)
   },
@@ -33,8 +33,8 @@ const heroSlides = [
     buttonColor: "dark",
     desktopTop: "78%",
     desktopLeft: "81%",
-    mobileButtonBottom: "14.2%",
-    mobileButtonScale: 0.92,
+    mobileButtonBottom: "8.7%",
+    mobileButtonScale: 0.84,
     mobileImagePosition: "center",
     mobileBg: "#FDB913" // Amarelo exato (Pão)
   },
@@ -46,8 +46,8 @@ const heroSlides = [
     buttonColor: "primary",
     desktopTop: "79%",
     desktopLeft: "83%",
-    mobileButtonBottom: "15.5%",
-    mobileButtonScale: 0.94,
+    mobileButtonBottom: "10.6%",
+    mobileButtonScale: 0.88,
     mobileImagePosition: "center",
     mobileBg: "#3A3A3A"
   }
@@ -106,25 +106,29 @@ const HeroCarousel = () => {
 
                 {/* Botão CTA - Posicionamento Absoluto dentro da Imagem */}
                 <div 
-                  className="absolute left-1/2 -translate-x-1/2 z-20 w-full flex justify-center"
-                  style={{ 
-                    bottom: slide.mobileButtonBottom || '10%',
-                    transform: `translateX(-50%) scale(${slide.mobileButtonScale || 1})`
-                  }}
+                  className="absolute left-0 right-0 z-20 flex justify-center pointer-events-none"
+                  style={{ bottom: slide.mobileButtonBottom || '10%' }}
                 >
-                  <Button 
-                    size="lg" 
-                    asChild 
-                    className={`text-lg font-bold uppercase tracking-wider px-10 py-7 rounded-full shadow-[0_10px_25px_-5px_rgba(0,0,0,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(0,0,0,0.5)] active:scale-95 transition-all duration-300 border-2 border-white/20 backdrop-blur-sm
-                      ${slide.buttonColor === 'dark' 
-                        ? 'bg-zinc-800 hover:bg-zinc-900 text-white' 
-                        : 'bg-primary hover:bg-primary/90 text-zinc-900'
-                      }`}
+                  <div 
+                    className="pointer-events-auto"
+                    style={{ 
+                      transform: `scale(${slide.mobileButtonScale || 1})`
+                    }}
                   >
-                    <a href="https://wa.me/5511996113977?text=Olá!%20Gostaria%20de%20solicitar%20um%20orçamento%20com%20a%20Vilpack.">
-                      Clique Aqui
-                    </a>
-                  </Button>
+                    <Button 
+                      size="lg" 
+                      asChild 
+                      className={`text-lg font-bold uppercase tracking-wider px-10 py-7 rounded-full shadow-[0_10px_25px_-5px_rgba(0,0,0,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(0,0,0,0.5)] active:scale-95 transition-all duration-300 border-2 border-white/20 backdrop-blur-sm
+                        ${slide.buttonColor === 'dark' 
+                          ? 'bg-zinc-800 hover:bg-zinc-900 text-white' 
+                          : 'bg-primary hover:bg-primary/90 text-zinc-900'
+                        }`}
+                    >
+                      <a href="https://wa.me/5511996113977?text=Olá!%20Gostaria%20de%20solicitar%20um%20orçamento%20com%20a%20Vilpack.">
+                        Clique Aqui
+                      </a>
+                    </Button>
+                  </div>
                 </div>
               </div>
 
