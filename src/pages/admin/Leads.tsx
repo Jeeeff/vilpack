@@ -220,6 +220,24 @@ const AdminLeads = () => {
     return { label: "Gelo", color: "text-gray-400", bg: "bg-gray-300", icon: <TrendingUp className="h-3 w-3" /> };
   };
 
+  const handleWhatsAppHandoff = (lead: Lead) => {
+    if (!lead.whatsapp) {
+      toast({ title: "Erro", description: "WhatsApp não informado.", variant: "destructive" });
+      return;
+    }
+    
+    const cleanPhone = lead.whatsapp.replace(/\D/g, '');
+    const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    
+    const message = encodeURIComponent(
+      `Olá ${lead.name || 'tudo bem'}! Aqui é da Vilpack Embalagens.\n\n` +
+      `Vi seu interesse em ${lead.interestSummary || 'nossas soluções'} para o segmento de ${lead.segment || 'seu negócio'}.\n\n` +
+      `Estou entrando em contato para dar continuidade ao seu atendimento. Como posso te ajudar hoje?`
+    );
+    
+    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+  };
+
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto p-4 md:p-8 min-h-screen bg-zinc-50/30">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -425,10 +443,10 @@ const AdminLeads = () => {
                         size="sm" 
                         variant="secondary" 
                         className="bg-white/10 hover:bg-white/20 text-white border-none rounded-xl h-10 px-4"
-                        onClick={() => window.open(`https://wa.me/55${selectedLead.whatsapp}`, '_blank')}
+                        onClick={() => handleWhatsAppHandoff(selectedLead)}
                       >
                         <MessageCircle className="h-4 w-4 mr-2" />
-                        WhatsApp
+                        Assumir no WhatsApp
                       </Button>
                     </div>
                   </div>

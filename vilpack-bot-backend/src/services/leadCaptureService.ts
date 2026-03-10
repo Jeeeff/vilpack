@@ -1,9 +1,9 @@
 import prisma from "../config/prisma";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY!,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+// Utilizando modelos Gemini 2.0+ (padrão em 2026)
 
 export interface ExtractedLeadData {
   name?: string | null;
@@ -48,6 +48,25 @@ export const leadCaptureService = {
   },
 
   /**
+   * Extrai JSON de uma resposta da IA que pode conter blocos markdown.
+   */
+  extractJson(text: string): any {
+    try {
+      // Tenta o parse direto
+      return JSON.parse(text);
+    } catch (e) {
+      // Se falhar, tenta limpar blocos markdown ```json ... ```
+      const cleanJson = text.replace(/```json|```/g, "").trim();
+      try {
+        return JSON.parse(cleanJson);
+      } catch (innerError) {
+        console.error("Falha ao parsear JSON limpo:", cleanJson);
+        throw innerError;
+      }
+    }
+  },
+
+  /**
    * Camada 2: Extração por IA (Híbrida)
    * Usa o contexto da conversa para identificar informações implícitas.
    */
@@ -70,7 +89,6 @@ Campos:
 - segment: Ramo de atuação (ex: Padaria, Hamburgueria, Loja de Roupas, E-commerce).
 - companyName: Nome da empresa do cliente.
 - interestSummary: Um breve resumo do que o cliente busca.
-- productsOfInterest: Array de strings com nomes de produtos do catálogo citados.
 - status: Classifique em NEW, ENGAGED, QUALIFIED ou WAITING_HUMAN.
 - qualificationScore: Inteiro de 0 a 100 baseado na clareza da necessidade e dados fornecidos.
 
@@ -80,21 +98,11 @@ Cliente (última): ${userMessage}
 Vik (resposta): ${assistantReply}
 `;
 
-      const response = await genAI.models.generateContent({
-        model: "gemini-1.5-flash",
-        config: {
-          responseMimeType: "application/json"
-        },
-        contents: [
-          { role: "user", parts: [{ text: extractionPrompt }] }
-        ]
-      });
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
-      if (!response.text) {
-        throw new Error("Resposta vazia da IA na extração");
-      }
-
-      const data = JSON.parse(response.text);
+      const result = await model.generateContent(extractionPrompt);
+      const text = result.response.text();
+      const data = this.extractJson(text);
       
       return data;
     } catch (error) {
@@ -141,36 +149,30 @@ Vik (resposta): ${assistantReply}
   async generateCommercialSummary(sessionId: string, lead: any): Promise<string | null> {
     try {
       const summaryPrompt = `
-Gere um resumo comercial estratégico e operacional para o time de vendas da Vilpack.
-Analise os dados abaixo e crie um briefing que ajude o vendedor a entender o valor do cliente e como abordá-lo.
+Gere um BRIEFING COMERCIAL ESTRATÉGICO para o time de vendas da Vilpack.
+O objetivo é que o vendedor bata o olho e entenda o potencial do cliente.
 
-Dados do Lead:
-- Nome: ${lead.name || 'Não informado'}
-- Segmento: ${lead.segment || 'Não informado'}
-- Necessidade: ${lead.interestSummary || 'Não detalhada'}
-- Produtos citados: ${lead.productsOfInterest || 'Nenhum'}
-- WhatsApp: ${lead.whatsapp || 'Não informado'}
-- Email: ${lead.email || 'Não informado'}
-- Score de Qualificação: ${lead.qualificationScore}/100
+DADOS COLETADOS:
+- Nome: ${lead.name || 'Não identificado'}
+- Segmento: ${lead.segment || 'Não identificado'}
+- O que busca: ${lead.interestSummary || 'Não detalhado'}
+- Produtos/Interesses: ${lead.productsOfInterest || 'Nenhum específico'}
+- Contato: ${lead.whatsapp || lead.email || 'Aguardando coleta'}
+- Score/Temperatura: ${lead.qualificationScore}/100 (${lead.priority})
 
-Formato:
-"O cliente [Nome], do segmento de [Segmento], demonstrou interesse em [Produtos]. A necessidade principal identificada foi [Necessidade]. O lead possui score [Score], sendo classificado como um potencial cliente [Temperatura: Frio/Morno/Quente]. Próximo passo sugerido: [Ação comercial direta]."
+FORMATO DE RESPOSTA (Siga rigorosamente):
+👤 CLIENTE: [Nome]
+🏢 SEGMENTO: [Ramo de atuação]
+🎯 INTERESSE: [O que busca + Produtos]
+🔥 STATUS: [Temperatura: Frio/Morno/Quente]
+🚀 AÇÃO: [Próximo passo recomendado para o vendedor]
 
-Seja conciso, profissional e use um tom de consultoria comercial.
+Seja direto, profissional e focado em conversão comercial.
 `;
 
-      const response = await genAI.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: [
-          { role: "user", parts: [{ text: summaryPrompt }] }
-        ]
-      });
-
-      if (!response.text) {
-        throw new Error("Resposta vazia da IA no resumo");
-      }
-
-      return response.text.trim();
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      const result = await model.generateContent(summaryPrompt);
+      return result.response.text().trim();
     } catch (error) {
       console.error("Erro ao gerar resumo comercial:", error);
       return null;

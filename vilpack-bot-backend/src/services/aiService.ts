@@ -1,19 +1,11 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import prisma from "../config/prisma";
 import { leadCaptureService } from "./leadCaptureService";
 
 // Initialize the Google Gen AI SDK
-const genAI = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY!,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-// Force usage of v1 API if possible, or try another model name if needed.
-// The SDK usually defaults to what is available.
-// If v1beta fails for gemini-1.5-flash, maybe we need to specify the model version or use v1beta properly?
-// Actually, gemini-1.5-flash should be available on v1beta.
-// Maybe the key has no access?
-// Or maybe the model needs to be `models/gemini-1.5-flash`?
-// The new SDK usually takes just `gemini-1.5-flash`.
+// Utilizando modelos Gemini 2.0+ (padrão em 2026)
 
 
 export const aiService = {
@@ -127,15 +119,18 @@ Se o cliente quiser um orçamento formal, use o marcador:
       ];
 
       // 🤖 Chamada da IA
-      const response = await genAI.models.generateContent({
-        model: "gemini-2.5-flash", // Modelo disponível confirmado em 2026
-        config: {
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      
+      // No @google/generative-ai, passamos o histórico como startChat
+      const chat = model.startChat({
+        history: contents.slice(0, -1), // Tudo exceto a última mensagem
+        generationConfig: {
           temperature: 0.7,
         },
-        contents: contents,
       });
 
-      const reply = response.text;
+      const result = await chat.sendMessage(message);
+      const reply = result.response.text();
 
       if (!reply) {
         throw new Error("Resposta vazia da IA");
