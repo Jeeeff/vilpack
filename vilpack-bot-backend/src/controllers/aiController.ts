@@ -15,7 +15,14 @@ export const aiController = {
 
   async history(req: Request, res: Response, next: NextFunction) {
     try {
-      const { sessionId } = req.params;
+      const rawSessionId = req.params.sessionId;
+      const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
+
+      if (!sessionId) {
+        res.status(400).json({ error: 'sessionId é obrigatório.' });
+        return;
+      }
+
       const history = await aiService.getChatHistory(sessionId);
       res.json(history);
     } catch (error) {

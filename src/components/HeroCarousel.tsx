@@ -20,8 +20,8 @@ const heroSlides = [
     buttonColor: "primary",
     desktopTop: "79%",
     desktopLeft: "83%",
-    mobileButtonBottom: "10.6%",
-    mobileButtonScale: 0.88,
+    mobileButtonBottom: "9.9%",
+    mobileButtonScale: 0.87,
     mobileImagePosition: "center",
     mobileBg: "#3A3A3A" // Cinza Escuro exato (Sacola)
   },
@@ -33,8 +33,8 @@ const heroSlides = [
     buttonColor: "dark",
     desktopTop: "78%",
     desktopLeft: "81%",
-    mobileButtonBottom: "8.7%",
-    mobileButtonScale: 0.84,
+    mobileButtonBottom: "7.2%",
+    mobileButtonScale: 0.82,
     mobileImagePosition: "center",
     mobileBg: "#FDB913" // Amarelo exato (Pão)
   },
@@ -46,8 +46,8 @@ const heroSlides = [
     buttonColor: "primary",
     desktopTop: "79%",
     desktopLeft: "83%",
-    mobileButtonBottom: "10.6%",
-    mobileButtonScale: 0.88,
+    mobileButtonBottom: "9.9%",
+    mobileButtonScale: 0.87,
     mobileImagePosition: "center",
     mobileBg: "#3A3A3A"
   }
