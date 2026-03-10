@@ -28,27 +28,42 @@ async function runValidation() {
   console.log('--- CENÁRIO 1: Cliente informa só nome ---');
   await aiService.generateSellerResponse(sessionId, "Olá, meu nome é Ricardo");
   let lead = await leadCaptureService.getLeadBySession(sessionId);
-  console.log(`✅ Lead Criado: ${lead?.name === 'Ricardo' ? 'SIM' : 'NÃO'}`);
+  console.log(`✅ Lead Criado via Regex/IA: ${lead?.name === 'Ricardo' ? 'SIM' : 'NÃO'}`);
   console.log(`✅ Status Inicial: ${lead?.status}\n`);
 
-  await delay(30000); // Aguarda 30s para evitar rate limit (5 RPM)
+  await delay(62000); // Aguarda cooldown + buffer RPM
 
-  // --- CENÁRIO 2: Nome + Segmento + Interesse ---
-  console.log('--- CENÁRIO 2: Nome + Segmento + Interesse ---');
+  // --- CENÁRIO 2: Hardening - Teste de Cooldown ---
+  console.log('--- CENÁRIO 2: Hardening - Teste de Cooldown ---');
+  console.log('   (Enviando mensagem rápida para ver se a IA é pulada)');
+  await aiService.generateSellerResponse(sessionId, "Quero sacolas");
+  // Log do console deve mostrar "Pulando extração: Cooldown ativo"
+  
+  await delay(5000); // Pequeno delay entre mensagens curtas
+
+  console.log('--- CENÁRIO 3: Hardening - Teste de Ruído ---');
+  await aiService.generateSellerResponse(sessionId, "ok");
+  // Log do console deve mostrar "Pulando extração: Mensagem muito curta ou irrelevante"
+
+  console.log('⌛ Aguardando 62s para expirar cooldown e evitar 429...');
+  await delay(62000);
+
+  // --- CENÁRIO 4: Nome + Segmento + Interesse (Extração Real) ---
+  console.log('--- CENÁRIO 4: Extração Real após Cooldown ---');
   await aiService.generateSellerResponse(sessionId, "Tenho uma padaria e procuro sacolas personalizadas");
   lead = await leadCaptureService.getLeadBySession(sessionId);
   console.log(`✅ Segmento Capturado: ${lead?.segment}`);
   console.log(`✅ Score Evoluiu: ${lead?.qualificationScore}`);
   console.log(`✅ Resumo Gerado: ${lead?.summary ? 'SIM' : 'NÃO'}\n`);
 
-  await delay(30000);
+  await delay(62000);
 
-  // --- CENÁRIO 3: WhatsApp Natural ---
-  console.log('--- CENÁRIO 3: WhatsApp Natural ---');
+  // --- CENÁRIO 5: WhatsApp Natural (Regex Prioritário) ---
+  console.log('--- CENÁRIO 5: WhatsApp Natural (Regex) ---');
   await aiService.generateSellerResponse(sessionId, "Pode me chamar no whats 11 99611-3977");
   lead = await leadCaptureService.getLeadBySession(sessionId);
   console.log(`✅ WhatsApp Capturado: ${lead?.whatsapp}`);
- console.log(`✅ Normalização (11996113977): ${lead?.whatsapp === '11996113977' ? 'SIM' : 'NÃO'}\n`);
+  console.log(`✅ Normalização (11996113977): ${lead?.whatsapp === '11996113977' ? 'SIM' : 'NÃO'}\n`);
 
   await delay(30000);
 

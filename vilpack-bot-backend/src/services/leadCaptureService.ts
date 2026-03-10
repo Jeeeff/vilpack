@@ -1,9 +1,12 @@
 import prisma from "../config/prisma";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import crypto from 'crypto';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-// Utilizando modelos Gemini 2.0+ (padrão em 2026)
+// Configurações de Hardening (Produção 2026)
+const EXTRACTION_COOLDOWN_MS = 60 * 1000; // 1 minuto de intervalo entre extrações de IA
+const MIN_SCORE_FOR_SUMMARY = 30; // Score mínimo para gerar briefing comercial
 
 export interface ExtractedLeadData {
   name?: string | null;
@@ -19,239 +22,187 @@ export interface ExtractedLeadData {
 
 export const leadCaptureService = {
   /**
-   * Camada 1: Extração Determinística (Regex)
-   * Extrai dados óbvios da mensagem do usuário antes de processar via IA.
+   * Camada 1: Extração Determinística (Regex) - Custo Zero e Alta Confiabilidade
    */
   extractDeterministicData(message: string): Partial<ExtractedLeadData> {
     const data: Partial<ExtractedLeadData> = {};
 
-    // Normalização de Email
+    // 1. E-mail (Case Insensitive)
     const emailMatch = message.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-    if (emailMatch) data.email = emailMatch[0].toLowerCase();
+    if (emailMatch) {
+      data.email = emailMatch[0].toLowerCase();
+      console.log(`[LEAD_REGEX] E-mail detectado: ${data.email}`);
+    }
 
-    // Normalização de WhatsApp/Phone (Apenas números, remove 55 se vier com DDD)
+    // 2. WhatsApp/Telefone (Normalização para Padrão Brasileiro 11 dígitos)
     let phoneDigits = message.replace(/\D/g, '');
     if (phoneDigits.length >= 10) {
       if (phoneDigits.startsWith('55') && phoneDigits.length > 11) {
         phoneDigits = phoneDigits.substring(2);
       }
       data.whatsapp = phoneDigits;
+      console.log(`[LEAD_REGEX] Telefone detectado: ${data.whatsapp}`);
     }
 
-    // Padrões simples de nome: "meu nome é [Nome]", "me chame de [Nome]"
+    // 3. Nome (Padrões Explícitos)
     const nameMatch = message.match(/(?:meu nome é|me chame de|sou o|sou a)\s+([a-zA-ZÀ-ÿ]+)/i);
     if (nameMatch && nameMatch[1].length > 2) {
       data.name = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1).toLowerCase();
+      console.log(`[LEAD_REGEX] Nome detectado: ${data.name}`);
     }
 
     return data;
   },
 
   /**
-   * Extrai JSON de uma resposta da IA que pode conter blocos markdown.
+   * Gera um hash do contexto atual para cache de extração.
    */
-  extractJson(text: string): any {
-    try {
-      // Tenta o parse direto
-      return JSON.parse(text);
-    } catch (e) {
-      // Se falhar, tenta limpar blocos markdown ```json ... ```
-      const cleanJson = text.replace(/```json|```/g, "").trim();
-      try {
-        return JSON.parse(cleanJson);
-      } catch (innerError) {
-        console.error("Falha ao parsear JSON limpo:", cleanJson);
-        throw innerError;
-      }
-    }
+  generateContextHash(sessionId: string, userMessage: string, history: any[]): string {
+    const contextString = sessionId + userMessage + history.map(h => h.content).join('');
+    return crypto.createHash('md5').update(contextString).digest('hex');
   },
 
   /**
-   * Camada 2: Extração por IA (Híbrida)
-   * Usa o contexto da conversa para identificar informações implícitas.
+   * Camada 2: Extração por IA (Híbrida) - Acionada Apenas sob Demanda
    */
   async extractAiData(sessionId: string, userMessage: string, assistantReply: string): Promise<ExtractedLeadData | null> {
     try {
-      const history = await prisma.message.findMany({
-        where: { sessionId },
-        orderBy: { createdAt: "asc" },
-        take: 10,
-      });
+      // 1. Busca Lead e Histórico para avaliar necessidade de disparo
+      const [currentLead, history] = await Promise.all([
+        prisma.lead.findUnique({ where: { sessionId } }),
+        prisma.message.findMany({
+          where: { sessionId },
+          orderBy: { createdAt: "asc" },
+          take: 5, // Contexto curto para economia
+        })
+      ]);
+
+      // 2. GATILHOS INTELIGENTES (Hardening Step 1)
+      const contextHash = this.generateContextHash(sessionId, userMessage, history);
+      
+      // Regra 1: Cache de Contexto (Evita reprocessar se nada mudou)
+      if (currentLead?.lastLeadContextHash === contextHash) {
+        console.log(`[LEAD_IA] Pulando extração: Contexto idêntico detectado (Hash: ${contextHash})`);
+        return null;
+      }
+
+      // Regra 2: Cooldown Temporal (Evita bombardeio de requisições 429)
+      const now = new Date();
+      if (currentLead?.lastLeadExtractionAt) {
+        const diff = now.getTime() - currentLead.lastLeadExtractionAt.getTime();
+        if (diff < EXTRACTION_COOLDOWN_MS) {
+          console.log(`[LEAD_IA] Pulando extração: Cooldown ativo (${Math.round((EXTRACTION_COOLDOWN_MS - diff)/1000)}s restantes)`);
+          return null;
+        }
+      }
+
+      // Regra 3: Relevância da Mensagem (Filtro de Ruído)
+      if (userMessage.length < 4 || ["ok", "sim", "não", "vlw", "obrigado"].includes(userMessage.toLowerCase())) {
+        console.log(`[LEAD_IA] Pulando extração: Mensagem muito curta ou irrelevante.`);
+        return null;
+      }
+
+      console.log(`[LEAD_IA] Iniciando extração Gemini para sessão ${sessionId}...`);
 
       const extractionPrompt = `
-Extraia dados comerciais estruturados da conversa abaixo entre uma Consultora (Vik) e um Cliente.
-Retorne APENAS um JSON válido. Use null para campos não encontrados.
+Extraia dados comerciais estruturados da conversa entre Consultora (Vik) e Cliente.
+Retorne APENAS JSON. Use null para campos não encontrados.
 
 Campos:
-- name: Nome próprio da pessoa.
-- whatsapp: Apenas números do telefone/whatsapp.
-- email: Endereço de email válido.
-- segment: Ramo de atuação (ex: Padaria, Hamburgueria, Loja de Roupas, E-commerce).
-- companyName: Nome da empresa do cliente.
-- interestSummary: Um breve resumo do que o cliente busca.
-- status: Classifique em NEW, ENGAGED, QUALIFIED ou WAITING_HUMAN.
-- qualificationScore: Inteiro de 0 a 100 baseado na clareza da necessidade e dados fornecidos.
+- name: Nome próprio.
+- whatsapp: Apenas números.
+- email: E-mail válido.
+- segment: Ramo de atuação (ex: Padaria, Restaurante).
+- companyName: Nome da empresa.
+- interestSummary: Breve resumo do que busca.
+- status: NEW, ENGAGED, QUALIFIED ou WAITING_HUMAN.
+- qualificationScore: Inteiro 0-100.
 
-Conversa:
+Histórico Recente:
 ${history.map(m => `${m.role === 'user' ? 'Cliente' : 'Vik'}: ${m.content}`).join('\n')}
 Cliente (última): ${userMessage}
 Vik (resposta): ${assistantReply}
 `;
 
       const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-
       const result = await model.generateContent(extractionPrompt);
-      const text = result.response.text();
-      const data = this.extractJson(text);
+      const data = this.extractJson(result.response.text());
+
+      // Atualiza metadados de controle
+      await prisma.lead.update({
+        where: { sessionId },
+        data: {
+          lastLeadExtractionAt: now,
+          lastLeadContextHash: contextHash
+        }
+      });
       
       return data;
-    } catch (error) {
-      console.error("Erro na extração por IA:", error);
+    } catch (error: any) {
+      console.error("[LEAD_IA] Erro na extração Gemini:", error.message);
+      // Fallback: Retorna null para não quebrar o chat principal
       return null;
     }
   },
 
   /**
-   * Calcula o score do lead baseado nos campos preenchidos e contexto.
+   * Extrai JSON com suporte a blocos markdown.
    */
-  calculateScore(lead: any): { score: number; status: string; priority: string } {
-    let score = 0;
-    
-    if (lead.name) score += 10;
-    if (lead.segment) score += 15;
-    if (lead.interestSummary || lead.productsOfInterest) score += 20;
-    if (lead.whatsapp) score += 25;
-    if (lead.email) score += 15;
-    
-    // Bônus por intenção clara (detectada pela IA no status)
-    if (lead.status === 'WAITING_HUMAN' || lead.status === 'QUALIFIED') score += 15;
-
-    let status = 'NEW';
-    let priority = 'LOW';
-
-    if (score >= 75) {
-      status = 'WAITING_HUMAN';
-      priority = 'URGENT';
-    } else if (score >= 50) {
-      status = 'QUALIFIED';
-      priority = 'HIGH';
-    } else if (score >= 25) {
-      status = 'ENGAGED';
-      priority = 'MEDIUM';
-    }
-
-    return { score: Math.min(score, 100), status, priority };
-  },
-
-  /**
-   * Gera um resumo comercial automático via IA.
-   */
-  async generateCommercialSummary(sessionId: string, lead: any): Promise<string | null> {
+  extractJson(text: string): any {
     try {
-      const summaryPrompt = `
-Gere um BRIEFING COMERCIAL ESTRATÉGICO para o time de vendas da Vilpack.
-O objetivo é que o vendedor bata o olho e entenda o potencial do cliente.
-
-DADOS COLETADOS:
-- Nome: ${lead.name || 'Não identificado'}
-- Segmento: ${lead.segment || 'Não identificado'}
-- O que busca: ${lead.interestSummary || 'Não detalhado'}
-- Produtos/Interesses: ${lead.productsOfInterest || 'Nenhum específico'}
-- Contato: ${lead.whatsapp || lead.email || 'Aguardando coleta'}
-- Score/Temperatura: ${lead.qualificationScore}/100 (${lead.priority})
-
-FORMATO DE RESPOSTA (Siga rigorosamente):
-👤 CLIENTE: [Nome]
-🏢 SEGMENTO: [Ramo de atuação]
-🎯 INTERESSE: [O que busca + Produtos]
-🔥 STATUS: [Temperatura: Frio/Morno/Quente]
-🚀 AÇÃO: [Próximo passo recomendado para o vendedor]
-
-Seja direto, profissional e focado em conversão comercial.
-`;
-
-      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-      const result = await model.generateContent(summaryPrompt);
-      return result.response.text().trim();
-    } catch (error) {
-      console.error("Erro ao gerar resumo comercial:", error);
-      return null;
+      return JSON.parse(text);
+    } catch (e) {
+      const cleanJson = text.replace(/```json|```/g, "").trim();
+      try {
+        return JSON.parse(cleanJson);
+      } catch (innerError) {
+        console.warn("[LEAD_IA] Falha no parse de JSON da IA.");
+        return null;
+      }
     }
   },
 
   /**
-   * Sincroniza os dados extraídos com o banco de dados de forma incremental.
+   * Sincroniza dados com persistência resiliente.
    */
   async updateLead(sessionId: string, deterministicData: Partial<ExtractedLeadData>, aiData: ExtractedLeadData | null) {
     try {
-      // 1. Busca lead atual para não sobrescrever dados válidos
       const currentLead = await prisma.lead.findUnique({
         where: { sessionId },
         include: { summary: true }
       });
 
+      // Merge inteligente: Prioridade para Determinístico (Regex) em campos exatos
       const mergedData = {
         ...aiData,
-        ...deterministicData, // Regex tem prioridade em campos exatos
+        ...deterministicData,
       };
 
-      // 2. Lógica de "Não Sobrescrever Válido por Vazio"
       const updateData: any = {};
-      
       const fields: (keyof ExtractedLeadData)[] = ['name', 'whatsapp', 'email', 'segment', 'companyName', 'interestSummary', 'status'];
       
       fields.forEach(field => {
         const newValue = mergedData[field];
         const currentValue = currentLead ? (currentLead as any)[field] : null;
 
-        // Se o novo valor existir e for diferente do atual, atualiza
         if (newValue && newValue !== currentValue) {
-          // Se for status, só atualiza se for "mais avançado" (ex: de NEW para ENGAGED)
           if (field === 'status') {
-            const statusOrder = ['NEW', 'ENGAGED', 'QUALIFIED', 'WAITING_HUMAN', 'CONVERTED', 'LOST'];
+            const statusOrder = ['NEW', 'ENGAGED', 'QUALIFIED', 'WAITING_HUMAN'];
             const currentIndex = statusOrder.indexOf(currentValue || 'NEW');
             const newIndex = statusOrder.indexOf(newValue as string);
-            if (newIndex > currentIndex) {
-              updateData[field] = newValue;
-            }
+            if (newIndex > currentIndex) updateData[field] = newValue;
           } else {
             updateData[field] = newValue;
           }
         }
       });
 
-      // Tratamento especial para produtos (acumulativo e sem duplicatas)
-      if (mergedData.productsOfInterest) {
-        const newProductsArray = Array.isArray(mergedData.productsOfInterest) 
-          ? mergedData.productsOfInterest 
-          : (mergedData.productsOfInterest as string).split(',').map(p => p.trim());
-        
-        const currentProductsArray = currentLead?.productsOfInterest 
-          ? currentLead.productsOfInterest.split(',').map(p => p.trim()) 
-          : [];
-
-        const combinedProducts = Array.from(new Set([...currentProductsArray, ...newProductsArray]))
-          .filter(p => p && p.length > 2);
-
-        if (combinedProducts.length > currentProductsArray.length) {
-          updateData.productsOfInterest = combinedProducts.join(', ');
-        }
-      }
-
-      // 3. Upsert Inicial/Dados Básicos
+      // 3. Upsert Base
       const lead = await prisma.lead.upsert({
         where: { sessionId },
         create: {
           sessionId,
-          name: updateData.name || null,
-          whatsapp: updateData.whatsapp || null,
-          email: updateData.email || null,
-          segment: updateData.segment || null,
-          companyName: updateData.companyName || null,
-          interestSummary: updateData.interestSummary || null,
-          productsOfInterest: updateData.productsOfInterest || null,
-          status: updateData.status || "NEW",
-          qualificationScore: 0,
+          ...updateData,
           lastInteractionAt: new Date(),
         },
         update: {
@@ -260,23 +211,22 @@ Seja direto, profissional e focado em conversão comercial.
         },
       });
 
-      // 4. Recalcular Score, Status e Prioridade
+      // 4. Score e Briefing
       const { score, status, priority } = this.calculateScore(lead);
       
-      // 5. Gerar Resumo se houver dados mínimos (Score > 20)
       let aiSummary = null;
-      if (score > 20) {
+      // Só gera resumo se houver mudança de dados ou score relevante
+      if (score >= MIN_SCORE_FOR_SUMMARY && (!currentLead?.summary || aiData)) {
         aiSummary = await this.generateCommercialSummary(sessionId, lead);
       }
 
-      // 6. Persistência Final
       return await prisma.lead.update({
         where: { id: lead.id },
         data: {
           qualificationScore: score,
-          status: status,
-          priority: priority,
-          isRead: false, // Nova interação torna o lead "não lido"
+          status,
+          priority,
+          isRead: false,
           summary: aiSummary ? {
             upsert: {
               create: { summary: aiSummary, lastAiUpdateAt: new Date() },
@@ -287,7 +237,51 @@ Seja direto, profissional e focado em conversão comercial.
       });
 
     } catch (error) {
-      console.error("Erro crítico na persistência do lead:", error);
+      console.error("[LEAD_PERSISTENCE] Erro crítico:", error);
+      return null;
+    }
+  },
+
+  calculateScore(lead: any): { score: number; status: string; priority: string } {
+    let score = 0;
+    if (lead.name) score += 10;
+    if (lead.segment) score += 15;
+    if (lead.interestSummary) score += 20;
+    if (lead.whatsapp) score += 25;
+    if (lead.email) score += 15;
+    if (lead.status === 'WAITING_HUMAN' || lead.status === 'QUALIFIED') score += 15;
+
+    let status = 'NEW';
+    let priority = 'LOW';
+    if (score >= 75) { status = 'WAITING_HUMAN'; priority = 'URGENT'; }
+    else if (score >= 50) { status = 'QUALIFIED'; priority = 'HIGH'; }
+    else if (score >= 25) { status = 'ENGAGED'; priority = 'MEDIUM'; }
+
+    return { score: Math.min(score, 100), status, priority };
+  },
+
+  async generateCommercialSummary(sessionId: string, lead: any): Promise<string | null> {
+    try {
+      const summaryPrompt = `
+Gere um BRIEFING COMERCIAL para a Vilpack:
+- Cliente: ${lead.name || 'Não identificado'}
+- Segmento: ${lead.segment || 'Não identificado'}
+- Interesse: ${lead.interestSummary || 'Não detalhado'}
+- Contato: ${lead.whatsapp || lead.email || 'Aguardando'}
+- Score: ${lead.qualificationScore}/100
+
+FORMATO:
+👤 CLIENTE: [Nome]
+🏢 SEGMENTO: [Ramo]
+🎯 INTERESSE: [O que busca]
+🔥 STATUS: [Frio/Morno/Quente]
+🚀 AÇÃO: [Próximo passo]
+`;
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      const result = await model.generateContent(summaryPrompt);
+      return result.response.text().trim();
+    } catch (error) {
+      console.warn("[LEAD_SUMMARY] Falha ao gerar resumo.");
       return null;
     }
   },

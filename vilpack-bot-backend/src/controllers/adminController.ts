@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../config/prisma';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const getSingleValue = (value: unknown): string | undefined => { 
   if (typeof value === 'string') return value; 
@@ -8,6 +10,46 @@ const getSingleValue = (value: unknown): string | undefined => {
 };
 
 export const adminController = {
+  /**
+   * Realiza o login administrativo
+   */
+  async login(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
+        return;
+      }
+
+      const user = await prisma.adminUser.findUnique({
+        where: { username }
+      });
+
+      if (!user) {
+        res.status(401).json({ error: 'Credenciais inválidas' });
+        return;
+      }
+
+      const isValid = await bcrypt.compare(password, user.password);
+
+      if (!isValid) {
+        res.status(401).json({ error: 'Credenciais inválidas' });
+        return;
+      }
+
+      const token = jwt.sign(
+        { id: user.id, username: user.username, role: user.role },
+        process.env.JWT_SECRET || 'fallback_secret',
+        { expiresIn: '8h' }
+      );
+
+      res.json({ token });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   /**
    * Lista todos os leads com paginação e filtros básicos
    */

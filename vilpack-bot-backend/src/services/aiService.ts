@@ -136,18 +136,18 @@ Se o cliente quiser um orçamento formal, use o marcador:
         throw new Error("Resposta vazia da IA");
       }
 
-      // 🧠 CAPTURA DE LEAD HÍBRIDA (Determinística + IA)
+      // 🧠 CAPTURA DE LEAD HÍBRIDA (Determinística + IA sob demanda)
       try {
-        // Camada 1: Regex
+        // Camada 1: Regex (Sempre roda, custo zero)
         const deterministicData = leadCaptureService.extractDeterministicData(message);
         
-        // Camada 2: IA Estruturada
+        // Camada 2: IA Estruturada (Gatilhos inteligentes e Cache interno)
         const aiLeadData = await leadCaptureService.extractAiData(sessionId, message, reply);
         
-        // Persistência/Update
+        // Persistência Resiliente
         await leadCaptureService.updateLead(sessionId, deterministicData, aiLeadData);
-      } catch (e) {
-        console.error("Erro no fluxo de captura de lead:", e);
+      } catch (e: any) {
+        console.warn(`[CHAT_LEAD_FALLBACK] Falha silenciosa na captura: ${e.message}`);
       }
 
       // 💾 Salva mensagens no banco

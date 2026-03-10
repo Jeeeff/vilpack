@@ -74,6 +74,8 @@ model Lead {
   isRead             Boolean    @default(false)    // Controle de notificações
   followUpAt         DateTime?                     // Agendamento de follow-up
   qualificationScore Int        @default(0)
+  lastLeadExtractionAt DateTime?                     // Controle de cooldown de IA
+  lastLeadContextHash  String?                       // Cache de contexto para evitar re-extração
   lastInteractionAt  DateTime   @default(now())
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
