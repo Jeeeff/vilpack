@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { API_URL } from "@/config/api";
 
 interface Product {
   id: string;
@@ -21,9 +22,13 @@ const AdminCatalog = () => {
   }, []);
 
   const fetchProducts = async () => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products`);
-    if (response.ok) {
-      setProducts(await response.json());
+    try {
+      const response = await fetch(`${API_URL}/products`);
+      if (response.ok) {
+        setProducts(await response.json());
+      }
+    } catch (error) {
+      console.error("[CATALOG] Error fetching products:", error);
     }
   };
 

@@ -1,23 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { API_URL } from "@/config/api";
 
 const AdminLogin = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
+  useEffect(() => {
+    console.log("[LOGIN] Admin login page loaded.");
+    console.log(`[LOGIN] Using API URL: ${API_URL}`);
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login attempt:", { username, password });
-    console.log("API URL:", import.meta.env.VITE_API_URL);
+    console.log("[LOGIN] Login attempt:", { username });
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/login`, {
+      const response = await fetch(`${API_URL}/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -25,15 +30,16 @@ const AdminLogin = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("[LOGIN] Login successful!");
         localStorage.setItem("admin_token", data.token);
         navigate("/admin/leads");
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.error("Login error:", response.status, errorData);
+        console.error("[LOGIN] Server error:", response.status, errorData);
         toast.error(errorData.error || "Falha no login. Verifique suas credenciais.");
       }
     } catch (error) {
-      console.error("Network error:", error);
+      console.error("[LOGIN] Network/Client error:", error);
       toast.error("Erro ao conectar com o servidor. Verifique se o backend está rodando.");
     }
   };

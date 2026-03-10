@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { API_URL } from "@/config/api";
 
 interface Lead {
   id: string;
@@ -86,7 +87,7 @@ const AdminLeads = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("admin_token");
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/leads`, {
+      const response = await fetch(`${API_URL}/admin/leads`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -106,7 +107,7 @@ const AdminLeads = () => {
   const handleOpenDetail = async (leadId: string) => {
     try {
       const token = localStorage.getItem("admin_token");
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/leads/${leadId}`, {
+      const response = await fetch(`${API_URL}/admin/leads/${leadId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -119,54 +120,70 @@ const AdminLeads = () => {
     }
   };
 
-  const updateStatus = async (id: string, newStatus: string) => {
-    setIsUpdating(true);
-    const token = localStorage.getItem("admin_token");
+  const handleUpdateStatus = async (leadId: string, newStatus: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/leads/${id}/status`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
+      const token = localStorage.getItem("admin_token");
+      const response = await fetch(`${API_URL}/admin/leads/${leadId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ status: newStatus })
       });
       if (response.ok) {
+        toast({ title: "Sucesso", description: "Status atualizado." });
         fetchLeads();
-        if (selectedLead?.id === id) {
+        if (selectedLead?.id === leadId) {
           setSelectedLead({ ...selectedLead, status: newStatus });
         }
-        toast({ title: "Status atualizado" });
       }
-    } catch (e) {
-      toast({ title: "Erro ao atualizar status", variant: "destructive" });
-    } finally {
-      setIsUpdating(false);
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
     }
   };
 
-  const saveNotes = async () => {
-    if (!selectedLead) return;
-    setIsUpdating(true);
-    const token = localStorage.getItem("admin_token");
+  const handleUpdatePriority = async (leadId: string, newPriority: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/leads/${selectedLead.id}/notes`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
+      const token = localStorage.getItem("admin_token");
+      const response = await fetch(`${API_URL}/admin/leads/${leadId}/priority`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ priority: newPriority })
+      });
+      if (response.ok) {
+        toast({ title: "Sucesso", description: "Prioridade atualizada." });
+        fetchLeads();
+        if (selectedLead?.id === leadId) {
+          setSelectedLead({ ...selectedLead, priority: newPriority });
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar prioridade:", error);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!selectedLead) return;
+    try {
+      const token = localStorage.getItem("admin_token");
+      const response = await fetch(`${API_URL}/admin/leads/${selectedLead.id}/notes`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ notes })
       });
       if (response.ok) {
+        toast({ title: "Sucesso", description: "Notas salvas." });
         fetchLeads();
-        setSelectedLead({ ...selectedLead, internalNotes: notes });
-        toast({ title: "Observações salvas" });
       }
-    } catch (e) {
-      toast({ title: "Erro ao salvar notas", variant: "destructive" });
-    } finally {
-      setIsUpdating(false);
+    } catch (error) {
+      console.error("Erro ao salvar notas:", error);
     }
   };
 
@@ -488,7 +505,7 @@ const AdminLeads = () => {
                       />
                       <Button 
                         className="w-full h-11 rounded-xl shadow-lg shadow-primary/10 transition-all active:scale-95"
-                        onClick={saveNotes}
+                        onClick={handleSaveNotes}
                         disabled={isUpdating}
                       >
                         {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar Observações"}
@@ -512,7 +529,7 @@ const AdminLeads = () => {
                             "h-10 rounded-xl font-bold text-[11px]",
                             selectedLead.status === s && "shadow-lg shadow-primary/20"
                           )}
-                          onClick={() => updateStatus(selectedLead.id, s)}
+                          onClick={() => handleUpdateStatus(selectedLead.id, s)}
                           disabled={isUpdating}
                         >
                           {s}
