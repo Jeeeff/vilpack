@@ -20,7 +20,8 @@ const heroSlides = [
     buttonColor: "primary",
     desktopTop: "79%",
     desktopLeft: "83%",
-    mobileTop: "88%",
+    mobileButtonBottom: "12%",
+    mobileImagePosition: "center",
     mobileBg: "#3A3A3A" // Cinza Escuro exato (Sacola)
   },
   {
@@ -31,7 +32,8 @@ const heroSlides = [
     buttonColor: "dark",
     desktopTop: "78%",
     desktopLeft: "81%",
-    mobileTop: "85%",
+    mobileButtonBottom: "10%",
+    mobileImagePosition: "center",
     mobileBg: "#FDB913" // Amarelo exato (Pão)
   },
   {
@@ -42,7 +44,8 @@ const heroSlides = [
     buttonColor: "primary",
     desktopTop: "79%",
     desktopLeft: "83%",
-    mobileTop: "88%",
+    mobileButtonBottom: "12%",
+    mobileImagePosition: "center",
     mobileBg: "#3A3A3A"
   }
 ];
@@ -86,40 +89,36 @@ const HeroCarousel = () => {
             <CarouselItem key={slide.id} className="h-auto w-full flex-shrink-0 relative p-0 border-0 pl-0 pt-0 bg-black">
               
               {/* --- MOBILE VIEW --- */}
-              <div className="md:hidden relative w-full h-[88vh] bg-black overflow-hidden flex flex-col">
-                {/* Camada da Imagem/Arte - Ocupa a maior parte da viewport */}
-                <div className="relative flex-1 w-full overflow-hidden">
-                  <img 
-                    src={slide.mobileImage || slide.image} 
-                    alt={slide.alt} 
-                    className="w-full h-full object-cover object-center block"
-                  />
-                  {/* Overlay gradiente suave para integrar com o rodapé se necessário */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20" />
-                </div>
+              <div className="md:hidden relative w-full h-[82vh] bg-black overflow-hidden">
+                {/* Imagem Principal - Ocupa todo o container */}
+                <img 
+                  src={slide.mobileImage || slide.image} 
+                  alt={slide.alt} 
+                  className="w-full h-full object-cover block"
+                  style={{ objectPosition: slide.mobileImagePosition || 'center' }}
+                />
+                
+                {/* Overlay Gradiente na base para dar leitura ao botão se necessário */}
+                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
 
-                {/* Camada Inferior de Apoio Visual (Rodapé do Slide) */}
+                {/* Botão CTA - Posicionamento Absoluto dentro da Imagem */}
                 <div 
-                  className="w-full h-[15vh] shrink-0 relative z-10 -mt-4 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.3)]"
-                  style={{ backgroundColor: slide.mobileBg }}
+                  className="absolute left-1/2 -translate-x-1/2 z-20"
+                  style={{ bottom: slide.mobileButtonBottom || '10%' }}
                 >
-                  {/* O Botão CTA - Posicionamento Absoluto Controlado dentro do Rodapé */}
-                  <div 
-                    className="absolute left-1/2 -translate-x-1/2"
-                    style={{ top: '40%' }}
+                  <Button 
+                    size="lg" 
+                    asChild 
+                    className={`text-lg font-bold uppercase tracking-wider px-10 py-7 rounded-full shadow-[0_10px_25px_-5px_rgba(0,0,0,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(0,0,0,0.5)] active:scale-95 transition-all duration-300 border-2 border-white/20 backdrop-blur-sm
+                      ${slide.buttonColor === 'dark' 
+                        ? 'bg-zinc-800 hover:bg-zinc-900 text-white' 
+                        : 'bg-primary hover:bg-primary/90 text-zinc-900'
+                      }`}
                   >
-                    <Button 
-                      size="lg" 
-                      asChild 
-                      className={`text-lg font-bold uppercase tracking-wider px-10 py-7 rounded-full shadow-[0_10px_25px_-5px_rgba(0,0,0,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(0,0,0,0.5)] active:scale-95 transition-all duration-300 border-2 border-white/20 backdrop-blur-sm
-                        ${slide.buttonColor === 'dark' 
-                          ? 'bg-zinc-800 hover:bg-zinc-900 text-white' 
-                          : 'bg-primary hover:bg-primary/90 text-zinc-900'
-                        }`}
-                    >
-                      <a href="#produtos">Clique Aqui</a>
-                    </Button>
-                  </div>
+                    <a href="https://wa.me/5511996113977?text=Olá!%20Gostaria%20de%20solicitar%20um%20orçamento%20com%20a%20Vilpack.">
+                      Clique Aqui
+                    </a>
+                  </Button>
                 </div>
               </div>
 
@@ -151,7 +150,7 @@ const HeroCarousel = () => {
                         : 'bg-primary hover:bg-primary/90 text-zinc-900'
                       }`}
                   >
-                    <a href="#produtos">
+                    <a href="https://wa.me/5511996113977?text=Olá!%20Gostaria%20de%20solicitar%20um%20orçamento%20com%20a%20Vilpack.">
                       Clique Aqui
                     </a>
                   </Button>
