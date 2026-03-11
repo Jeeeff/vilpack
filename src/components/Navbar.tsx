@@ -62,11 +62,11 @@ const Navbar = () => {
             </Button>
           </div>
         )}
-      </nav>
-      {/* Spacer to push content down - Height of Navbar (h-24 + pb-4 = approx 7rem/112px) */}
-      <div className="w-full h-32 bg-black"></div>
-      {/* Black Strip/Breathing Room */}
-      <div className="w-full h-1 bg-black"></div>
+       </nav>
+       {/* Spacer to push content down - Responsive: mobile h-20, desktop h-32 */}
+       <div className="w-full h-20 md:h-32 bg-black"></div>
+       {/* Black Strip/Breathing Room */}
+       <div className="w-full h-1 bg-black"></div>
     </>
   );
 };

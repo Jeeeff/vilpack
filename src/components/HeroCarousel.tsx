@@ -26,7 +26,7 @@ const heroSlides = [
       large: { top: '85.9%', left: '83.5%' },    // 1920-2559px
       ultra: { top: '86.3%', left: '83.8%' }     // 2560px+
     },
-    mobileButtonBottom: "13%",
+    mobileButtonBottom: "8%",
     mobileButtonScale: 0.85,
     mobileImagePosition: "center",
     mobileBg: "#3A3A3A" // Cinza Escuro exato (Sacola)
@@ -45,7 +45,7 @@ const heroSlides = [
        large: { top: '80.7%', left: '80.1%' },    // 1920-2559px
        ultra: { top: '81.1%', left: '80.4%' }     // 2560px+
      },
-     mobileButtonBottom: "13%",
+     mobileButtonBottom: "8%",
      mobileButtonScale: 0.80,
      mobileImagePosition: "center",
      mobileBg: "#FDB913" // Amarelo exato (Pão)
@@ -64,7 +64,7 @@ const heroSlides = [
       large: { top: '85.9%', left: '83.5%' },    // 1920-2559px
       ultra: { top: '86.3%', left: '83.8%' }     // 2560px+
     },
-    mobileButtonBottom: "13%",
+    mobileButtonBottom: "8%",
     mobileButtonScale: 0.85,
     mobileImagePosition: "center",
     mobileBg: "#3A3A3A"
@@ -154,15 +154,15 @@ const HeroCarousel = () => {
           {heroSlides.map((slide) => (
             <CarouselItem key={slide.id} className="h-auto w-full flex-shrink-0 relative p-0 border-0 pl-0 pt-0 bg-black">
               
-               {/* --- MOBILE VIEW --- */}
-               <div className="md:hidden relative w-full h-[95vh] bg-black overflow-hidden">
-                 {/* Imagem Principal - Ocupa todo o container */}
-                 <img 
-                   src={slide.mobileImage || slide.image} 
-                   alt={slide.alt} 
-                   className="w-full h-full object-contain block"
-                   style={{ objectPosition: slide.mobileImagePosition || 'center' }}
-                 />
+                {/* --- MOBILE VIEW --- */}
+                <div className="md:hidden relative w-full h-screen bg-black overflow-hidden">
+                  {/* Imagem Principal - Ocupa todo o container */}
+                  <img 
+                    src={slide.mobileImage || slide.image} 
+                    alt={slide.alt} 
+                    className="w-full h-full object-cover block"
+                    style={{ objectPosition: slide.mobileImagePosition || 'center' }}
+                  />
                 
                 {/* Overlay Gradiente na base para dar leitura ao botão se necessário */}
                 <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
