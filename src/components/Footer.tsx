@@ -1,4 +1,3 @@
-import vilpackLogo from "@/assets/Logo_fundo_preto.png";
 import { Phone, Mail, MapPin } from "lucide-react";
 
 const Footer = () => (
@@ -7,7 +6,7 @@ const Footer = () => (
       <div className="grid md:grid-cols-3 gap-10">
         {/* Logo & about */}
         <div>
-          <img src={vilpackLogo} alt="VILPACK" className="h-10 mb-4 brightness-0 invert" />
+          <img src="/Logo_fundo_preto.png" alt="VILPACK" className="h-10 mb-4 brightness-0 invert" />
           <p className="text-secondary-foreground/70 text-sm">
             VILPACK — Atacado de embalagens com qualidade, agilidade e compromisso com o seu negócio.
           </p>
