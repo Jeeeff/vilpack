@@ -1,4 +1,4 @@
-import vilpackLogo from "@/assets/vilpack-logo.png";
+import vilpackLogo from "@/assets/Logo_fundo_preto.png";
 import { Phone, Mail, MapPin } from "lucide-react";
 
 const Footer = () => (

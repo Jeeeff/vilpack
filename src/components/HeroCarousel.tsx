@@ -18,35 +18,53 @@ const heroSlides = [
     mobileImage: "/slide_sacola_mobile.jpg",
     alt: "Saco Kraft Vilpack",
     buttonColor: "primary",
-    desktopTop: "79%",
-    desktopLeft: "83%",
-    mobileButtonBottom: "9.3%",
+    // CTA Desktop - Ancoragem pelo CENTRO do botão
+    // Referência visual: "SOLICITE UM ORÇAMENTO"
+    desktopCta: {
+      small: { top: '85.0%', left: '82.8%' },    // 1280-1599px
+      medium: { top: '85.5%', left: '83.2%' },   // 1600-1919px
+      large: { top: '85.9%', left: '83.5%' },    // 1920-2559px
+      ultra: { top: '86.3%', left: '83.8%' }     // 2560px+
+    },
+    mobileButtonBottom: "13%",
     mobileButtonScale: 0.85,
     mobileImagePosition: "center",
     mobileBg: "#3A3A3A" // Cinza Escuro exato (Sacola)
   },
-  {
-    id: 2,
-    image: "/slide_pao.jpg",
-    mobileImage: "/slide_pao_mobile.jpg",
-    alt: "Sacos de Pão",
-    buttonColor: "dark",
-    desktopTop: "78%",
-    desktopLeft: "81%",
-    mobileButtonBottom: "6.6%",
-    mobileButtonScale: 0.80,
-    mobileImagePosition: "center",
-    mobileBg: "#FDB913" // Amarelo exato (Pão)
-  },
+   {
+     id: 2,
+     image: "/slide_pao.jpg",
+     mobileImage: "/slide_pao_mobile.jpg",
+     alt: "Sacos de Pão",
+     buttonColor: "dark",
+     // CTA Desktop - Ancoragem pelo CENTRO do botão
+     // Referência visual: "ATRAVÉS DO NOSSO WHATSAPP" (NÃO "FAÇA UM ORÇAMENTO")
+     desktopCta: {
+       small: { top: '79.8%', left: '79.2%' },    // 1280-1599px
+       medium: { top: '80.3%', left: '79.7%' },   // 1600-1919px
+       large: { top: '80.7%', left: '80.1%' },    // 1920-2559px
+       ultra: { top: '81.1%', left: '80.4%' }     // 2560px+
+     },
+     mobileButtonBottom: "13%",
+     mobileButtonScale: 0.80,
+     mobileImagePosition: "center",
+     mobileBg: "#FDB913" // Amarelo exato (Pão)
+   },
   {
     id: 3,
     image: "/slide_sacola.jpg",
     mobileImage: "/slide_sacola_mobile.jpg",
     alt: "Saco Kraft Vilpack (Extra)",
     buttonColor: "primary",
-    desktopTop: "79%",
-    desktopLeft: "83%",
-    mobileButtonBottom: "9.3%",
+    // CTA Desktop - Ancoragem pelo CENTRO do botão
+    // Referência visual: "SOLICITE UM ORÇAMENTO"
+    desktopCta: {
+      small: { top: '85.0%', left: '82.8%' },    // 1280-1599px
+      medium: { top: '85.5%', left: '83.2%' },   // 1600-1919px
+      large: { top: '85.9%', left: '83.5%' },    // 1920-2559px
+      ultra: { top: '86.3%', left: '83.8%' }     // 2560px+
+    },
+    mobileButtonBottom: "13%",
     mobileButtonScale: 0.85,
     mobileImagePosition: "center",
     mobileBg: "#3A3A3A"
@@ -56,6 +74,41 @@ const heroSlides = [
 const HeroCarousel = () => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1920);
+
+  // Detectar faixa de viewport e retornar altura apropriada
+  const getDesktopHeroHeight = () => {
+    if (viewportWidth < 1440) {
+      // Desktop pequeno/médio: 86vh (menos altura, menos espaço vertical)
+      return '86vh';
+    } else if (viewportWidth < 1920) {
+      // Laptop/Full HD: 88vh (altura padrão)
+      return '88vh';
+    } else if (viewportWidth < 2560) {
+      // Monitor grande: 90vh (mais presença)
+      return '90vh';
+    } else {
+      // Ultrawide: 92vh (máxima presença)
+      return '92vh';
+    }
+  };
+
+  // Detectar faixa de viewport e retornar coordenadas apropriadas do CENTER do CTA
+  const getDesktopCoordinates = (slide: typeof heroSlides[0]) => {
+    if (viewportWidth < 1600) {
+      // Desktop pequeno (1280-1599px)
+      return slide.desktopCta.small;
+    } else if (viewportWidth < 1920) {
+      // Laptop/Full HD (1600-1919px)
+      return slide.desktopCta.medium;
+    } else if (viewportWidth < 2560) {
+      // Monitor grande (1920-2559px)
+      return slide.desktopCta.large;
+    } else {
+      // Ultrawide (2560px+)
+      return slide.desktopCta.ultra;
+    }
+  };
 
   useEffect(() => {
     if (!api) {
@@ -68,6 +121,16 @@ const HeroCarousel = () => {
       setCurrent(api.selectedScrollSnap() + 1);
     });
   }, [api]);
+
+  // Atualizar viewport width em resize
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div className="relative w-full h-auto overflow-hidden bg-black">
@@ -91,15 +154,15 @@ const HeroCarousel = () => {
           {heroSlides.map((slide) => (
             <CarouselItem key={slide.id} className="h-auto w-full flex-shrink-0 relative p-0 border-0 pl-0 pt-0 bg-black">
               
-              {/* --- MOBILE VIEW --- */}
-              <div className="md:hidden relative w-full h-[82vh] bg-black overflow-hidden">
-                {/* Imagem Principal - Ocupa todo o container */}
-                <img 
-                  src={slide.mobileImage || slide.image} 
-                  alt={slide.alt} 
-                  className="w-full h-full object-cover block"
-                  style={{ objectPosition: slide.mobileImagePosition || 'center' }}
-                />
+               {/* --- MOBILE VIEW --- */}
+               <div className="md:hidden relative w-full h-[95vh] bg-black overflow-hidden">
+                 {/* Imagem Principal - Ocupa todo o container */}
+                 <img 
+                   src={slide.mobileImage || slide.image} 
+                   alt={slide.alt} 
+                   className="w-full h-full object-contain block"
+                   style={{ objectPosition: slide.mobileImagePosition || 'center' }}
+                 />
                 
                 {/* Overlay Gradiente na base para dar leitura ao botão se necessário */}
                 <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
@@ -132,25 +195,25 @@ const HeroCarousel = () => {
                 </div>
               </div>
 
-              {/* --- DESKTOP VIEW (Banner Implementation) --- */}
-              {/* Estrutura do Container: relative, width: 100%, overflow: hidden */}
-              <div className="hidden md:block relative w-full overflow-hidden">
-                {/* A Imagem: width: 100%, height: auto, display: block */}
-                <img 
-                  src={slide.image} 
-                  alt={slide.alt} 
-                  className="w-full h-auto block"
-                />
+                {/* --- DESKTOP VIEW (Banner Implementation) --- */}
+                {/* Container expandido com altura responsiva por faixa de viewport */}
+                <div className="hidden md:block relative w-full overflow-hidden bg-black" style={{ height: getDesktopHeroHeight(), maxHeight: '100vh' }}>
+                  {/* Imagem com full coverage */}
+                  <img 
+                    src={slide.image} 
+                    alt={slide.alt} 
+                    className="w-full h-full object-cover block"
+                  />
                 
-                {/* O Botão (Absolute): Positioned dynamically */}
-                <div 
-                  className="absolute z-20"
-                  style={{ 
-                    top: slide.desktopTop, 
-                    left: slide.desktopLeft, 
-                    transform: 'translate(-50%, -50%)' 
-                  }}
-                >
+                 {/* O Botão (Absolute): Positioned dynamically por faixa de viewport */}
+                 <div 
+                   className="absolute z-20"
+                   style={{ 
+                     top: getDesktopCoordinates(slide).top, 
+                     left: getDesktopCoordinates(slide).left, 
+                     transform: 'translate(-50%, -50%)' 
+                   }}
+                 >
                   <Button 
                     size="lg" 
                     asChild 
