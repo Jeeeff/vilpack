@@ -13,8 +13,8 @@ export const aiService = {
     try {
       console.log("GEMINI_API_KEY carregada?", !!process.env.GEMINI_API_KEY);
 
-      // 🔎 Busca sessão
-      const session = await prisma.session.findUnique({
+      // 🔎 Busca ou cria sessão automaticamente
+      let session = await prisma.session.findUnique({
         where: { id: sessionId },
         include: {
           store: true,
@@ -22,7 +22,41 @@ export const aiService = {
       });
 
       if (!session) {
-        throw new Error("Sessão não encontrada");
+        console.log(`[AI] Sessão não encontrada. Criando nova sessão: ${sessionId}`);
+        
+        // Busca ou cria loja padrão 'vilpack'
+        let store = await prisma.store.findUnique({
+          where: { slug: 'vilpack' },
+        });
+
+        if (!store) {
+          console.log(`[AI] Loja 'vilpack' não encontrada. Criando...`);
+          store = await prisma.store.create({
+            data: {
+              name: 'Vilpack',
+              slug: 'vilpack',
+              phoneNumber: '5511996113977', // Número da Vilpack
+            }
+          });
+          console.log(`[AI] Loja 'vilpack' criada com sucesso.`);
+        }
+
+        // Cria nova sessão com o sessionId fornecido
+        session = await prisma.session.create({
+          data: {
+            id: sessionId, // Usa o UUID fornecido pelo frontend
+            storeId: store.id,
+            cart: {
+              create: {}
+            }
+          },
+          include: {
+            store: true,
+            cart: true,
+          }
+        });
+        
+        console.log(`[AI] Nova sessão criada: ${sessionId} (Store: ${store.slug})`);
       }
 
       // 🛍 Busca produtos da loja
