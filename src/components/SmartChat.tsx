@@ -19,7 +19,14 @@ type Message = {
 
 import { API_URL } from '@/config/api';
 
-const STORE_SLUG = 'loja-demo';
+// Generate UUID v4
+const generateUUID = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 interface SmartChatProps {
   onSessionChange?: (sessionId: string) => void;
@@ -97,29 +104,15 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
     }
   }, [isOpen]);
 
-  const createSession = async () => {
-    try {
-      const res = await fetch(`${API_URL}/session`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeSlug: STORE_SLUG }),
-      });
-      
-      if (!res.ok) throw new Error('Falha ao criar sessão');
-      
-      const data = await res.json();
-      setSessionId(data.sessionId);
-      localStorage.setItem('vilpack_session_id', data.sessionId);
-      return data.sessionId;
-    } catch (error) {
-      console.error('Erro ao criar sessão:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro de Conexão",
-        description: "Não foi possível conectar ao servidor.",
-      });
-      return null;
-    }
+  // Get or create session ID (local UUID generation)
+  const getOrCreateSessionId = (): string => {
+    const saved = localStorage.getItem('vilpack_session_id');
+    if (saved) return saved;
+    
+    const newSessionId = generateUUID();
+    localStorage.setItem('vilpack_session_id', newSessionId);
+    console.log(`[SmartChat] New session created: ${newSessionId}`);
+    return newSessionId;
   };
 
   const handleSendMessage = async () => {
@@ -138,15 +131,9 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
     setIsTyping(true);
 
     try {
-      let currentSessionId = sessionId;
-      if (!currentSessionId) {
-        currentSessionId = await createSession();
-        if (!currentSessionId) {
-            setIsLoading(false);
-            setIsTyping(false);
-            return;
-        }
-      }
+      // Get or create session ID locally (no API call)
+      let currentSessionId = sessionId || getOrCreateSessionId();
+      setSessionId(currentSessionId);
 
       const res = await fetch(`${API_URL}/ai/chat`, {
         method: 'POST',
@@ -158,33 +145,11 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
       });
 
       if (!res.ok) {
-          if (res.status === 404 || res.status === 400) {
-              // Session might be expired or invalid, try recreating
-              localStorage.removeItem('vilpack_session_id');
-              setSessionId(null);
-              // Retry once
-              currentSessionId = await createSession();
-              if (currentSessionId) {
-                   const retryRes = await fetch(`${API_URL}/ai/chat`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          sessionId: currentSessionId,
-                          message: userMsg.text,
-                        }),
-                   });
-                   if (retryRes.ok) {
-                        const data = await retryRes.json();
-                        addAssistantMessage(data.reply);
-                   }
-              }
-          } else {
-            throw new Error('Falha na resposta do servidor');
-          }
-      } else {
-        const data = await res.json();
-        addAssistantMessage(data.reply);
+        throw new Error(`Chat error: ${res.status}`);
       }
+
+      const data = await res.json();
+      addAssistantMessage(data.reply);
     } catch (error) {
       console.error('Chat error:', error);
       toast({
@@ -192,8 +157,6 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
         description: "Não foi possível enviar sua mensagem. Tente novamente.",
         variant: "destructive",
       });
-      // Remove the last message from UI if it failed to send? 
-      // User choice, usually better to keep but mark as failed.
     } finally {
       setIsLoading(false);
       setIsTyping(false);
