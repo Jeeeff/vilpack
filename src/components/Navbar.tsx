@@ -17,7 +17,7 @@ const Navbar = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-black transition-all duration-300 pb-4">
         <div className="container mx-auto flex items-center justify-between h-24 px-4 pt-2">
            <a href="#inicio" className="flex items-center">
-             <img src="/Logo_fundo_preto.png" alt="VILPACK" className="h-12 w-auto object-contain" />
+             <img src="/Logo_fundo_preto.png" alt="VILPACK" className="h-8 md:h-12 w-auto object-contain transition-all duration-300" />
            </a>
 
           {/* Desktop */}
