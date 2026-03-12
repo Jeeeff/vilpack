@@ -81,9 +81,7 @@ export const aiService = {
       // 🛍 Busca produtos da loja com categoria
       const products = await prisma.product.findMany({
         where: {
-          category: {
-            storeId: session.storeId,
-          },
+          category: { storeId: session.storeId },
           active: true,
         },
         include: { category: true },
@@ -92,15 +90,26 @@ export const aiService = {
 
       console.log("Produtos encontrados:", products.length);
 
-      // 📦 Agrupa produtos por categoria para o prompt
+      // 📦 Agrupa por categoria — limita a 12 itens por categoria e 8 categorias max
+      // (reduz tamanho do prompt para evitar 429 por excesso de tokens)
+      const MAX_CATEGORIES = 8;
+      const MAX_PER_CATEGORY = 12;
       const grouped: Record<string, string[]> = {};
       for (const p of products) {
         const cat = p.category?.name ?? 'Geral';
         if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push(p.name + (p.description ? ` (${p.description})` : ''));
+        if (grouped[cat].length < MAX_PER_CATEGORY) {
+          grouped[cat].push(p.name);
+        }
       }
-      const formattedProducts = Object.entries(grouped)
-        .map(([cat, items]) => `[${cat}]\n${items.map(i => `  • ${i}`).join('\n')}`)
+      const topCategories = Object.entries(grouped).slice(0, MAX_CATEGORIES);
+      const formattedProducts = topCategories
+        .map(([cat, items]) => {
+          const extra = (grouped[cat].length < (products.filter(p => (p.category?.name ?? 'Geral') === cat).length))
+            ? ` (+${products.filter(p => (p.category?.name ?? 'Geral') === cat).length - MAX_PER_CATEGORY} mais)`
+            : '';
+          return `[${cat}]\n${items.map(i => `  • ${i}`).join('\n')}${extra}`;
+        })
         .join('\n\n');
 
       // 🧠 PROMPT VICK 4.0 — RESPOSTAS CURTAS + AFUNILAMENTO POR SUBCATEGORIA
@@ -179,7 +188,10 @@ HANDOFF: Quando tiver nome + interesse + WhatsApp, use EXATAMENTE este marcador:
       const reply = await callGeminiWithRetry(async () => {
         const chat = model.startChat({
           history: contents.slice(0, -1), // Tudo exceto a última mensagem
-          generationConfig: { temperature: 0.7 },
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 300,   // Limita tamanho da resposta (~200-250 palavras max)
+          },
         });
         const result = await chat.sendMessage(message);
         return result.response.text();

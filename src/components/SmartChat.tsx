@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send, Loader2, Store } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -47,9 +46,15 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Scroll para o fim sempre que messages ou isTyping mudar
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
+  };
 
   // Load session and history from backend on mount
   useEffect(() => {
@@ -82,20 +87,17 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
     initChat();
   }, []);
 
-  // Auto-scroll to bottom with better timing
+  // Auto-scroll to bottom quando chegam mensagens ou typing indicator muda
   useEffect(() => {
-    if (scrollRef.current) {
-      const scrollContainer = scrollRef.current.closest('.flex-1');
-      if (scrollContainer) {
-        setTimeout(() => {
-          scrollContainer.scrollTo({
-            top: scrollContainer.scrollHeight,
-            behavior: 'smooth'
-          });
-        }, 100);
-      }
+    scrollToBottom();
+  }, [messages, isTyping]);
+
+  // Scroll imediato (sem animação) ao abrir o chat com histórico
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => scrollToBottom('instant'), 50);
     }
-  }, [messages, isOpen, isTyping]);
+  }, [isOpen]);
 
   // Focus input when open
   useEffect(() => {
@@ -231,7 +233,7 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
           </CardHeader>
 
           <CardContent className="flex-1 overflow-hidden p-0 bg-slate-50/50 relative">
-            <ScrollArea className="h-full w-full">
+            <div ref={scrollContainerRef} className="h-full w-full overflow-y-auto">
               <div className="p-4 space-y-6">
                 {/* Welcome Message if no history */}
                 {messages.length === 0 && !isLoading && (
@@ -356,9 +358,9 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                     </div>
                   </div>
                 )}
-                <div ref={scrollRef} />
+                <div ref={messagesEndRef} />
               </div>
-            </ScrollArea>
+            </div>
           </CardContent>
 
           <CardFooter className="p-4 bg-white border-t border-slate-100 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
