@@ -5,8 +5,22 @@ import crypto from 'crypto';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // Configurações de Hardening (Produção 2026)
-const EXTRACTION_COOLDOWN_MS = 60 * 1000; // 1 minuto de intervalo entre extrações de IA
-const MIN_SCORE_FOR_SUMMARY = 30; // Score mínimo para gerar briefing comercial
+const EXTRACTION_COOLDOWN_MS = 3 * 60 * 1000; // 3 minutos entre extrações de IA
+const MIN_SCORE_FOR_SUMMARY = 50; // Score mínimo para gerar briefing (era 30)
+const MIN_MESSAGE_LENGTH = 8;     // Mensagens muito curtas não disparam IA
+
+// Palavras-chave que indicam conteúdo relevante para extração de lead
+const RELEVANT_KEYWORDS = [
+  'nome', 'chamo', 'sou', 'empresa', 'cnpj', 'whatsapp', 'telefone', 'celular',
+  'email', '@', 'segmento', 'padaria', 'restaurante', 'loja', 'mercado',
+  'quero', 'preciso', 'interessado', 'comprar', 'orçamento', 'quantidade',
+  'pedido', 'contato', 'falar', 'humano', 'vendedor', 'consultor'
+];
+
+const hasRelevantContent = (msg: string): boolean => {
+  const lower = msg.toLowerCase();
+  return RELEVANT_KEYWORDS.some(kw => lower.includes(kw));
+};
 
 export interface ExtractedLeadData {
   name?: string | null;
@@ -96,9 +110,13 @@ export const leadCaptureService = {
         }
       }
 
-      // Regra 3: Relevância da Mensagem (Filtro de Ruído)
-      if (userMessage.length < 4 || ["ok", "sim", "não", "vlw", "obrigado"].includes(userMessage.toLowerCase())) {
-        console.log(`[LEAD_IA] Pulando extração: Mensagem muito curta ou irrelevante.`);
+      // Regra 3: Relevância da Mensagem (Filtro de Ruído reforçado)
+      if (
+        userMessage.length < MIN_MESSAGE_LENGTH ||
+        ["ok", "sim", "não", "vlw", "obrigado", "blz", "ok!", "tudo bem", "oi", "ola", "olá"].includes(userMessage.toLowerCase().trim()) ||
+        !hasRelevantContent(userMessage)
+      ) {
+        console.log(`[LEAD_IA] Pulando extração: Mensagem sem conteúdo relevante para lead.`);
         return null;
       }
 
@@ -213,10 +231,16 @@ Vik (resposta): ${assistantReply}
 
       // 4. Score e Briefing
       const { score, status, priority } = this.calculateScore(lead);
-      
+
+      // Calcula score anterior para detectar mudança de faixa
+      const previousScore = currentLead?.qualificationScore ?? 0;
+      const crossedThreshold =
+        (previousScore < 50 && score >= 50) ||
+        (previousScore < 75 && score >= 75);
+
       let aiSummary = null;
-      // Só gera resumo se houver mudança de dados ou score relevante
-      if (score >= MIN_SCORE_FOR_SUMMARY && (!currentLead?.summary || aiData)) {
+      // Gera resumo apenas quando cruzar uma faixa de score E score for relevante
+      if (score >= MIN_SCORE_FOR_SUMMARY && crossedThreshold) {
         aiSummary = await this.generateCommercialSummary(sessionId, lead);
       }
 

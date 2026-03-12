@@ -5,7 +5,26 @@ import { leadCaptureService } from "./leadCaptureService";
 // Initialize the Google Gen AI SDK
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-// Utilizando modelos Gemini 2.0+ (padrão em 2026)
+// Retry com backoff exponencial para erros 429 do Gemini
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function callGeminiWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const is429 = err?.status === 429 || err?.message?.includes('429') || err?.message?.includes('quota');
+      if (is429 && attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
+        console.warn(`[GEMINI] Rate limit (429). Aguardando ${delay}ms antes da tentativa ${attempt + 2}/${maxRetries + 1}...`);
+        await sleep(delay);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error('Gemini: máximo de tentativas atingido');
+}
 
 
 export const aiService = {
@@ -154,19 +173,17 @@ HANDOFF: Quando tiver nome + interesse + WhatsApp, use EXATAMENTE este marcador:
         },
       ];
 
-      // 🤖 Chamada da IA
+      // 🤖 Chamada da IA com retry automático em caso de 429
       const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-      
-      // No @google/generative-ai, passamos o histórico como startChat
-      const chat = model.startChat({
-        history: contents.slice(0, -1), // Tudo exceto a última mensagem
-        generationConfig: {
-          temperature: 0.7,
-        },
-      });
 
-      const result = await chat.sendMessage(message);
-      const reply = result.response.text();
+      const reply = await callGeminiWithRetry(async () => {
+        const chat = model.startChat({
+          history: contents.slice(0, -1), // Tudo exceto a última mensagem
+          generationConfig: { temperature: 0.7 },
+        });
+        const result = await chat.sendMessage(message);
+        return result.response.text();
+      });
 
       if (!reply) {
         throw new Error("Resposta vazia da IA");
