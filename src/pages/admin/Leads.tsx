@@ -418,7 +418,14 @@ const AdminLeads = () => {
 
       {/* Modal de Detalhes do Lead */}
       <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
-        <DialogContent className="max-w-6xl h-[90vh] p-0 overflow-hidden border-none rounded-[32px] shadow-2xl flex flex-col">
+        <DialogContent className="max-w-6xl h-[90vh] p-0 overflow-hidden border-none rounded-[32px] shadow-2xl flex flex-col" aria-describedby={undefined}>
+          {/* Títulos para screen readers — visualmente ocultos */}
+          <DialogTitle className="sr-only">
+            Detalhes do Lead {selectedLead?.name || ''}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Informações completas, histórico de conversa e ações do lead selecionado.
+          </DialogDescription>
           {selectedLead && (
             <>
               {/* Header do Modal */}
