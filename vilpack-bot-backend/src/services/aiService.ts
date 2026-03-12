@@ -59,7 +59,7 @@ export const aiService = {
         console.log(`[AI] Nova sessão criada: ${sessionId} (Store: ${store.slug})`);
       }
 
-      // 🛍 Busca produtos da loja
+      // 🛍 Busca produtos da loja com categoria
       const products = await prisma.product.findMany({
         where: {
           category: {
@@ -67,58 +67,60 @@ export const aiService = {
           },
           active: true,
         },
+        include: { category: true },
+        orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
       });
 
       console.log("Produtos encontrados:", products.length);
 
-      // 📦 Formata produtos para o prompt
-      const formattedProducts = products
-        .map(
-          (p) =>
-            `- ${p.name} (R$ ${Number(p.price).toFixed(2)}) ${
-              p.description ? "- " + p.description : ""
-            } ${p.imageUrl ? `[Imagem: ${p.imageUrl}]` : ""}`
-        )
-        .join("\n");
+      // 📦 Agrupa produtos por categoria para o prompt
+      const grouped: Record<string, string[]> = {};
+      for (const p of products) {
+        const cat = p.category?.name ?? 'Geral';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(p.name + (p.description ? ` (${p.description})` : ''));
+      }
+      const formattedProducts = Object.entries(grouped)
+        .map(([cat, items]) => `[${cat}]\n${items.map(i => `  • ${i}`).join('\n')}`)
+        .join('\n\n');
 
-      // 🧠 PROMPT PROFISSIONAL (VIK 3.1 - CONSULTORA PREMIUM)
+      // 🧠 PROMPT VICK 4.0 — RESPOSTAS CURTAS + AFUNILAMENTO POR SUBCATEGORIA
       const systemPrompt = `
-Você é a Vick, a consultora comercial sênior da Vilpack.
-Sua missão é transformar visitantes em leads qualificados através de uma consultoria de embalagens sofisticada.
+Você é a Vick, consultora da Vilpack — empresa de embalagens.
+Seja DIRETA, AMIGÁVEL e BREVE. Máximo 3 frases por resposta, salvo quando listar produtos.
 
-**Diretrizes de Atendimento:**
-1.  **Reconhecimento de Contexto:** Se o cliente já informou o nome, use-o com naturalidade. Se já informou o segmento (ex: "tenho uma padaria"), não pergunte novamente; use essa informação para sugerir soluções específicas para padarias.
-2.  **Tom de Voz:** Premium, técnico mas acessível, e focado em Branding. Embalagem não é apenas custo, é investimento em marca.
-3.  **Captura Progressiva:**
-    - Fase 1 (Conexão): Obter o nome.
-    - Fase 2 (Diagnóstico): Entender o segmento e o que o cliente busca (ex: sacolas, papel acoplado, caixas).
-    - Fase 3 (Solução): Recomendar produtos do catálogo abaixo.
-    - Fase 4 (Conversão): Obter WhatsApp/Email para envio de catálogo completo e orçamento.
-4.  **Handoff Humano:** Quando o cliente demonstrar intenção clara de compra ou solicitar contato humano, diga que está preparando os dados para um consultor especialista e peça o contato se ainda não tiver.
+REGRAS ABSOLUTAS:
+- Nunca use parágrafos longos. Prefira listas curtas.
+- Nunca repita informações que o cliente já deu.
+- Nunca invente produtos fora do catálogo abaixo.
+- Preços são passados pelo WhatsApp — nunca cite valores.
+- Não use "Olá!" repetidamente. Seja natural.
 
-🛒 **Catálogo Vilpack Disponível:**
+FLUXO DE ATENDIMENTO (siga em ordem, sem pular etapas):
+1. NOME — Se ainda não souber, pergunte o nome do cliente.
+2. INTERESSE — Pergunte qual tipo de produto o cliente busca (ex: sacolas, caixas, papel).
+3. AFUNILAMENTO — Se a categoria tiver muitos itens, pergunte a subcategoria. Exemplo:
+   • "Temos sacolas lisas, recicláveis, personalizadas e para padaria. Qual te interessa?"
+   Liste apenas os TIPOS existentes no catálogo para aquela categoria, não liste todos os produtos ainda.
+4. PRODUTO — Depois de saber a subcategoria, liste os produtos específicos (máx. 5 por vez).
+5. CONTATO — Quando o cliente demonstrar interesse, peça o WhatsApp para enviar orçamento.
+
+CATÁLOGO VILPACK:
 ${formattedProducts}
 
-📜 **Regras de Ouro:**
-- **NÃO seja repetitiva.** 
-- **NÃO use "Olá!" em todas as frases.** Seja fluida.
-- **Responda de forma concisa no início.** Deixe o cliente falar.
-- **Foco em WhatsApp:** O canal principal de fechamento da Vilpack é o WhatsApp.
-
-Se o cliente quiser um orçamento formal, use o marcador:
+HANDOFF: Quando tiver nome + interesse + WhatsApp, use EXATAMENTE este marcador:
 ### [RESUMO_FINAL]
-*   **Consultora:** Vick
-*   **Cliente:** [Nome]
-*   **WhatsApp:** [Telefone]
-*   **Segmento:** [Segmento]
-*   **Interesse:** [Produtos]
+- **Cliente:** [Nome]
+- **WhatsApp:** [Telefone]
+- **Segmento:** [Ramo do cliente]
+- **Interesse:** [Produtos]
 ---
-*Vick: "Estou enviando seus dados agora mesmo para nossa equipe comercial. Em instantes você receberá nossa proposta premium!"*
+"Perfeito! Passando para nosso time agora. Em breve entrarão em contato!"
 `;
 
       // ⚡ INTERCEPTAÇÃO DO "START"
       if (message.toLowerCase() === 'start') {
-         return "Olá! Eu sou a Vick, a assistente virtual da Vilpack. Como posso ajudar você a encontrar a embalagem perfeita hoje?";
+         return "Oi! Sou a Vick da Vilpack 😊 Qual tipo de embalagem você está precisando?";
       }
 
       // 📜 Busca histórico de mensagens
@@ -143,7 +145,7 @@ Se o cliente quiser um orçamento formal, use o marcador:
         },
         {
           role: "model",
-          parts: [{ text: "Sim, entendi. Sou a Vick, a consultora de vendas da Vilpack e seguirei essas diretrizes." }],
+          parts: [{ text: "Entendido. Sou a Vick da Vilpack — vou ser direta, amigável e breve, guiando o cliente pelo catálogo por etapas." }],
         },
         ...historyContents,
         {
