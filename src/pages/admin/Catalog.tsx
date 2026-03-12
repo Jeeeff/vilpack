@@ -6,7 +6,18 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { API_URL } from "@/config/api";
-import { Upload, FileText, ImagePlus, CheckCircle2, XCircle, Loader2, Package } from "lucide-react";
+import { Upload, FileText, ImagePlus, CheckCircle2, XCircle, Loader2, Package, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Product {
   id: string;
@@ -36,6 +47,7 @@ const getImageSrc = (imageUrl: string | null) => {
 const AdminCatalog = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -83,6 +95,27 @@ const AdminCatalog = () => {
       toast.error('Erro de conexão ao importar CSV');
     } finally {
       setImportLoading(false);
+    }
+  };
+
+  const handleDelete = async (productId: string) => {
+    setDeleting(productId);
+    const token = localStorage.getItem('admin_token');
+    try {
+      const res = await fetch(`${API_URL}/admin/products/${productId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        toast.success('Produto excluído.');
+        setProducts((prev) => prev.filter((p) => p.id !== productId));
+      } else {
+        toast.error('Erro ao excluir produto');
+      }
+    } catch {
+      toast.error('Erro de conexão');
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -227,6 +260,7 @@ const AdminCatalog = () => {
                   <TableHead>Tipo / Categoria</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Upload de Imagem</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -287,6 +321,40 @@ const AdminCatalog = () => {
                           }}
                         />
                       </label>
+                    </TableCell>
+                    <TableCell>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-zinc-400 hover:text-red-500 hover:bg-red-50"
+                            disabled={deleting === product.id}
+                          >
+                            {deleting === product.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Trash2 className="h-4 w-4" />
+                            }
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              O produto <strong>{product.name}</strong> será removido permanentemente do catálogo. Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-red-500 hover:bg-red-600"
+                              onClick={() => handleDelete(product.id)}
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))}

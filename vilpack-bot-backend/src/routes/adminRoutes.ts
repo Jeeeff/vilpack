@@ -21,5 +21,7 @@ router.patch('/leads/:id/notes', authMiddleware, adminController.updateNotes);
 router.post('/products/import-csv', authMiddleware, uploadCsv.single('file'), productController.importCsv);
 // Upload de imagem de produto
 router.post('/products/:id/image', authMiddleware, uploadImage.single('image'), productController.updateProductImage);
+// Excluir produto
+router.delete('/products/:id', authMiddleware, productController.delete);
 
 export default router;

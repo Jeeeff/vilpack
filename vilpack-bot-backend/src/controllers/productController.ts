@@ -2,30 +2,110 @@ import { Request, Response } from 'express';
 import { productService } from '../services/productService';
 import prisma from '../config/prisma';
 
-// Parseia CSV em memória — suporta vírgula e ponto-e-vírgula como separador
+// Parseia uma linha CSV respeitando campos entre aspas (RFC 4180)
+const parseCsvLine = (line: string, sep: string): string[] => {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        // aspas duplas dentro de campo entre aspas = escape
+        if (line[i + 1] === '"') { current += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (line.startsWith(sep, i)) {
+        fields.push(current.trim());
+        current = '';
+        i += sep.length - 1;
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+};
+
+// Parseia CSV em memória — suporta vírgula e ponto-e-vírgula, respeita aspas
 const parseCsv = (buffer: Buffer): Record<string, string>[] => {
-  const text = buffer.toString('utf-8');
+  // Tenta UTF-8, depois latin1 (comum em exports do Windows/Excel)
+  let text = buffer.toString('utf-8');
+  // Remove BOM se presente
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) return [];
 
-  // Detecta separador
+  // Detecta separador: prefere ; se houver, senão ,
   const sep = lines[0].includes(';') ? ';' : ',';
-  const headers = lines[0].split(sep).map((h) => h.trim().toLowerCase().replace(/[^a-z0-9_]/g, ''));
+  const rawHeaders = parseCsvLine(lines[0], sep);
+  // Normaliza header: minúsculas, sem acentos básicos, só alfanum e espaço
+  const headers = rawHeaders.map((h) =>
+    h.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+      .replace(/[^a-z0-9 ]/g, '')                        // remove especiais exceto espaço
+      .trim()
+  );
 
   return lines.slice(1).map((line) => {
-    const values = line.split(sep).map((v) => v.trim().replace(/^"|"$/g, ''));
+    const values = parseCsvLine(line, sep);
     const row: Record<string, string> = {};
-    headers.forEach((h, i) => { row[h] = values[i] ?? ''; });
+    headers.forEach((h, i) => { row[h] = (values[i] ?? '').trim(); });
     return row;
   }).filter((row) => Object.values(row).some((v) => v !== ''));
 };
 
 // Normaliza possíveis nomes de coluna para os campos internos
-const normalize = (row: Record<string, string>) => ({
-  name:        row['nome'] || row['name'] || row['produto'] || '',
-  type:        row['tipo'] || row['type'] || row['categoria'] || row['category'] || 'Geral',
-  description: row['descricao'] || row['descricão'] || row['description'] || '',
-});
+// Suporta tanto o formato Tiny ERP quanto colunas simples
+const normalize = (row: Record<string, string>) => {
+  // DEBUG: log das chaves encontradas (remover após validar)
+  // console.log('[CSV] headers found:', Object.keys(row));
+
+  // Tenta encontrar o campo nome em várias formas
+  const name =
+    row['nome do produto 120'] ||  // Tiny ERP
+    row['nome do produto']         ||
+    row['nome produto']            ||
+    row['nome']                    ||
+    row['name']                    ||
+    row['produto']                 ||
+    '';
+
+  // Categoria vem de "Grupo Filtrado" no Tiny ERP
+  const type =
+    row['grupo filtrado']          ||  // Tiny ERP
+    row['grupo']                   ||
+    row['categoria']               ||
+    row['category']                ||
+    row['tipo']                    ||
+    row['type']                    ||
+    'Geral';
+
+  // Situação: "Ativo/Inativo" no Tiny ERP
+  const situacao =
+    row['situacao ativosinativo']  ||  // Tiny ERP (após normalize)
+    row['situacao']                ||
+    row['situação']                ||
+    row['ativo']                   ||
+    'Ativo';
+
+  const active = situacao.toLowerCase().includes('ativo') && !situacao.toLowerCase().includes('inativo');
+
+  const description =
+    row['observacoes']             ||  // Tiny ERP
+    row['descricao']               ||
+    row['description']             ||
+    '';
+
+  return { name, type, description, active };
+};
 
 export const productController = {
   async getAll(req: Request, res: Response) {
@@ -106,8 +186,13 @@ export const productController = {
 
       const results = { created: 0, updated: 0, errors: [] as string[] };
 
+      // Log dos headers detectados para facilitar debug
+      if (rows.length > 0) {
+        console.log('[CSV] Headers detectados:', Object.keys(rows[0]));
+      }
+
       for (const row of rows) {
-        const { name, type, description } = normalize(row);
+        const { name, type, description, active } = normalize(row);
         if (!name) { results.errors.push(`Linha ignorada: nome vazio`); continue; }
 
         try {
@@ -121,15 +206,19 @@ export const productController = {
             });
           }
 
-          // Verifica se produto já existe pelo nome (case-insensitive)
+          // Verifica se produto já existe pelo nome (case-insensitive) em qualquer categoria
           const existing = await prisma.product.findFirst({
-            where: { name: { equals: name, mode: 'insensitive' }, categoryId: category.id },
+            where: { name: { equals: name, mode: 'insensitive' } },
           });
 
           if (existing) {
             await prisma.product.update({
               where: { id: existing.id },
-              data: { description: description || existing.description, categoryId: category.id },
+              data: {
+                description: description || existing.description,
+                categoryId: category.id,
+                active,
+              },
             });
             results.updated++;
           } else {
@@ -139,7 +228,7 @@ export const productController = {
                 description: description || null,
                 price: 0,          // Preço definido via WhatsApp conforme regra de negócio
                 categoryId: category.id,
-                active: true,
+                active,
               },
             });
             results.created++;
