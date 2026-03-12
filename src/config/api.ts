@@ -1,21 +1,19 @@
 export const getApiUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL?.trim();
-  
+
+  // Variável definida explicitamente (ex: dev com localhost)
   if (envUrl && envUrl !== 'undefined') {
     return envUrl;
   }
 
-  // Log de erro para ajudar no diagnóstico de produção
-  console.error('[API_CONFIG] VITE_API_URL is missing or undefined. Check your .env file and build process.');
-
-  // Em produção, se a variável não estiver definida, assume rota relativa (proxy)
-  // para evitar mixed content ou acesso a localhost
-  if (import.meta.env.PROD) {
-    return '/api';
-  }
-  // Em desenvolvimento, fallback para localhost
-  return 'http://localhost:3001/api';
+  // Produção (build Docker): usa rota relativa — o nginx faz o proxy /api/ → backend:3001
+  // Desenvolvimento sem .env: fallback para localhost
+  return import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 };
 
 export const API_URL = getApiUrl();
-console.log(`[API_CONFIG] Base URL set to: ${API_URL}`);
+
+// Só loga em dev para não poluir console de produção
+if (import.meta.env.DEV) {
+  console.log(`[API_CONFIG] Base URL set to: ${API_URL}`);
+}
