@@ -105,7 +105,7 @@ export const leadCaptureService = {
       console.log(`[LEAD_IA] Iniciando extração Gemini para sessão ${sessionId}...`);
 
       const extractionPrompt = `
-Extraia dados comerciais estruturados da conversa entre Consultora (Vik) e Cliente.
+Extraia dados comerciais estruturados da conversa entre Consultora (Vick) e Cliente.
 Retorne APENAS JSON. Use null para campos não encontrados.
 
 Campos:
@@ -119,7 +119,7 @@ Campos:
 - qualificationScore: Inteiro 0-100.
 
 Histórico Recente:
-${history.map(m => `${m.role === 'user' ? 'Cliente' : 'Vik'}: ${m.content}`).join('\n')}
+        ${history.map(m => `${m.role === 'user' ? 'Cliente' : 'Vick'}: ${m.content}`).join('\n')}
 Cliente (última): ${userMessage}
 Vik (resposta): ${assistantReply}
 `;

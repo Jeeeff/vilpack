@@ -83,7 +83,7 @@ export const aiService = {
 
       // 🧠 PROMPT PROFISSIONAL (VIK 3.1 - CONSULTORA PREMIUM)
       const systemPrompt = `
-Você é a Vik, a consultora comercial sênior da Vilpack.
+Você é a Vick, a consultora comercial sênior da Vilpack.
 Sua missão é transformar visitantes em leads qualificados através de uma consultoria de embalagens sofisticada.
 
 **Diretrizes de Atendimento:**
@@ -107,18 +107,18 @@ ${formattedProducts}
 
 Se o cliente quiser um orçamento formal, use o marcador:
 ### [RESUMO_FINAL]
-*   **Consultora:** Vik
+*   **Consultora:** Vick
 *   **Cliente:** [Nome]
 *   **WhatsApp:** [Telefone]
 *   **Segmento:** [Segmento]
 *   **Interesse:** [Produtos]
 ---
-*Vik: "Estou enviando seus dados agora mesmo para nossa equipe comercial. Em instantes você receberá nossa proposta premium!"*
+*Vick: "Estou enviando seus dados agora mesmo para nossa equipe comercial. Em instantes você receberá nossa proposta premium!"*
 `;
 
       // ⚡ INTERCEPTAÇÃO DO "START"
       if (message.toLowerCase() === 'start') {
-         return "Olá! Eu sou a Vik, a assistente virtual da Vilpack. Como posso ajudar você a encontrar a embalagem perfeita hoje?";
+         return "Olá! Eu sou a Vick, a assistente virtual da Vilpack. Como posso ajudar você a encontrar a embalagem perfeita hoje?";
       }
 
       // 📜 Busca histórico de mensagens
@@ -143,7 +143,7 @@ Se o cliente quiser um orçamento formal, use o marcador:
         },
         {
           role: "model",
-          parts: [{ text: "Sim, entendi. Sou a Vik, a consultora de vendas da Vilpack e seguirei essas diretrizes." }],
+          parts: [{ text: "Sim, entendi. Sou a Vick, a consultora de vendas da Vilpack e seguirei essas diretrizes." }],
         },
         ...historyContents,
         {

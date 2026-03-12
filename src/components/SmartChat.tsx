@@ -197,7 +197,7 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
           size="icon"
         >
           <MessageCircle className="h-7 w-7" />
-          <span className="text-[10px] font-bold uppercase tracking-tighter">Vik</span>
+          <span className="text-[10px] font-bold uppercase tracking-tighter">Vick</span>
         </Button>
       )}
 
@@ -213,7 +213,7 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                 <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 border-2 border-primary rounded-full"></div>
               </div>
               <div>
-                <CardTitle className="text-xl font-bold tracking-tight">Consultoria Vik</CardTitle>
+                <CardTitle className="text-xl font-bold tracking-tight">Consultoria Vick</CardTitle>
                 <div className="flex items-center gap-1.5">
                   <div className="h-1.5 w-1.5 bg-green-400 rounded-full animate-pulse"></div>
                   <p className="text-xs text-primary-foreground/70 font-medium">Online e pronta para ajudar</p>
@@ -240,7 +240,7 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                         <MessageCircle className="h-8 w-8 text-primary" />
                       </div>
                       <div className="space-y-1">
-                        <p className="font-bold text-slate-800">Olá! Sou a Vik.</p>
+                         <p className="font-bold text-slate-800">Olá! Sou a Vick.</p>
                         <p className="text-sm text-slate-500 max-w-[200px]">Especialista em embalagens Vilpack. Como posso ajudar seu negócio hoje?</p>
                       </div>
                    </div>
@@ -293,9 +293,39 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                               <Button 
                                   className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold py-7 text-base shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-95 flex flex-col items-center justify-center gap-0 leading-tight rounded-xl"
                                   onClick={() => {
-                                      const phone = "5511999999999"; 
-                                      const text = encodeURIComponent(msg.summaryContent || '');
-                                      window.location.href = `https://wa.me/${phone}?text=${text}`;
+                                      const VILPACK_PHONE = "5511996113977";
+                                      const content = msg.summaryContent || '';
+
+                                      // Extrai campos do bloco [RESUMO_FINAL] gerado pela Vick
+                                      const extractField = (label: string) => {
+                                        const regex = new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`, 'i');
+                                        const match = content.match(regex);
+                                        return match ? match[1].trim() : null;
+                                      };
+
+                                      const clienteName  = extractField('Cliente')   || extractField('Nome');
+                                      const clienteWA    = extractField('WhatsApp')  || extractField('Telefone');
+                                      const segmento     = extractField('Segmento');
+                                      const interesse    = extractField('Interesse') || extractField('Produtos');
+
+                                      // Monta mensagem para o WhatsApp da Vilpack
+                                      const linhas: string[] = [
+                                        '🔔 *Novo lead via chat Vick*',
+                                        '',
+                                        clienteName  ? `👤 *Cliente:* ${clienteName}`   : null,
+                                        clienteWA    ? `📱 *WhatsApp:* ${clienteWA}`     : null,
+                                        segmento     ? `🏢 *Segmento:* ${segmento}`      : null,
+                                        interesse    ? `🎯 *Interesse:* ${interesse}`     : null,
+                                        '',
+                                        '---',
+                                        '_Resumo da conversa com a Vick:_',
+                                        content
+                                          .replace(/###\s*\[RESUMO_FINAL\]\s*/gi, '')
+                                          .trim(),
+                                      ].filter((l): l is string => l !== null);
+
+                                      const text = encodeURIComponent(linhas.join('\n'));
+                                      window.open(`https://wa.me/${VILPACK_PHONE}?text=${text}`, '_blank');
                                   }}
                               >
                                   <div className="flex items-center gap-2">
@@ -322,7 +352,7 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                         <div className="h-1.5 w-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:0.2s]"></div>
                         <div className="h-1.5 w-1.5 bg-primary/80 rounded-full animate-bounce [animation-delay:0.4s]"></div>
                       </div>
-                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Vik digitando</span>
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Vick digitando</span>
                     </div>
                   </div>
                 )}

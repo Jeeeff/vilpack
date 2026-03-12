@@ -269,7 +269,7 @@ const AdminLeads = () => {
               {filteredLeads.length} Ativos
             </Badge>
           </h2>
-          <p className="text-zinc-500 mt-2 text-base font-medium">Pipeline comercial inteligente alimentado pela Vik.</p>
+          <p className="text-zinc-500 mt-2 text-base font-medium">Pipeline comercial inteligente alimentado pela Vick.</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-4">
@@ -478,7 +478,7 @@ const AdminLeads = () => {
                   <div className="space-y-4">
                     <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                       <TrendingUp className="h-4 w-4" />
-                      Briefing by Vik
+                      Briefing by Vick
                     </h3>
                     <div className="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm relative overflow-hidden group">
                       <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -570,7 +570,7 @@ const AdminLeads = () => {
                           <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
                         </div>
                         <span className="text-[10px] font-bold text-zinc-400 mt-2 px-2 uppercase tracking-tighter">
-                          {msg.role === 'user' ? 'Cliente' : 'Vik'} • {format(new Date(msg.createdAt), "HH:mm")}
+                          {msg.role === 'user' ? 'Cliente' : 'Vick'} • {format(new Date(msg.createdAt), "HH:mm")}
                         </span>
                       </div>
                     ))}
