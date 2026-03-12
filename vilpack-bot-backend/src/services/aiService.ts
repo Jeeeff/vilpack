@@ -26,190 +26,187 @@ async function callGeminiWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Pro
   throw new Error('Gemini: máximo de tentativas atingido');
 }
 
+/**
+ * Detecta quais categorias o cliente mencionou na mensagem atual.
+ * Usa correspondência simples de substrings (sem IA, custo zero).
+ */
+function detectMentionedCategories(message: string, categoryNames: string[]): string[] {
+  const lower = message.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // remove acentos para comparação
+
+  return categoryNames.filter(cat => {
+    const catNorm = cat.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    // Verifica se alguma palavra da categoria (≥4 chars) aparece na mensagem
+    const words = catNorm.split(/\s+/).filter(w => w.length >= 4);
+    return words.some(w => lower.includes(w)) || lower.includes(catNorm);
+  });
+}
 
 export const aiService = {
   async generateSellerResponse(sessionId: string, message: string) {
     try {
-      console.log("GEMINI_API_KEY carregada?", !!process.env.GEMINI_API_KEY);
-
       // 🔎 Busca ou cria sessão automaticamente
       let session = await prisma.session.findUnique({
         where: { id: sessionId },
-        include: {
-          store: true,
-        },
+        include: { store: true },
       });
 
       if (!session) {
-        console.log(`[AI] Sessão não encontrada. Criando nova sessão: ${sessionId}`);
-        
-        // Busca ou cria loja padrão 'vilpack'
-        let store = await prisma.store.findUnique({
-          where: { slug: 'vilpack' },
-        });
-
+        let store = await prisma.store.findUnique({ where: { slug: 'vilpack' } });
         if (!store) {
-          console.log(`[AI] Loja 'vilpack' não encontrada. Criando...`);
           store = await prisma.store.create({
-            data: {
-              name: 'Vilpack',
-              slug: 'vilpack',
-              phoneNumber: '5511996113977', // Número da Vilpack
-            }
+            data: { name: 'Vilpack', slug: 'vilpack', phoneNumber: '5511996113977' },
           });
-          console.log(`[AI] Loja 'vilpack' criada com sucesso.`);
         }
-
-        // Cria nova sessão com o sessionId fornecido
         session = await prisma.session.create({
-          data: {
-            id: sessionId, // Usa o UUID fornecido pelo frontend
-            storeId: store.id,
-            cart: {
-              create: {}
-            }
-          },
-          include: {
-            store: true,
-            cart: true,
-          }
+          data: { id: sessionId, storeId: store.id, cart: { create: {} } },
+          include: { store: true, cart: true },
         });
-        
-        console.log(`[AI] Nova sessão criada: ${sessionId} (Store: ${store.slug})`);
+        console.log(`[AI] Nova sessão criada: ${sessionId}`);
       }
 
-      // 🛍 Busca produtos da loja com categoria
-      const products = await prisma.product.findMany({
-        where: {
-          category: { storeId: session.storeId },
-          active: true,
-        },
-        include: { category: true },
-        orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
+      // ⚡ INTERCEPTAÇÃO DO "START" — antes de qualquer query de produto
+      if (message.toLowerCase() === 'start') {
+        return "Oi! Sou a Vick da Vilpack 😊 Qual tipo de embalagem você está precisando?";
+      }
+
+      // 📂 Busca apenas as CATEGORIAS disponíveis (query leve, sempre roda)
+      const categories = await prisma.category.findMany({
+        where: { storeId: session.storeId },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
       });
+      const categoryNames = categories.map(c => c.name);
+      const categoryList = categoryNames.map(c => `  • ${c}`).join('\n');
 
-      console.log("Produtos encontrados:", products.length);
+      // 🔍 Detecta se o cliente mencionou alguma categoria (custo zero — só string match)
+      const mentioned = detectMentionedCategories(message, categoryNames);
 
-      // 📦 Agrupa por categoria — limita a 12 itens por categoria e 8 categorias max
-      // (reduz tamanho do prompt para evitar 429 por excesso de tokens)
-      const MAX_CATEGORIES = 8;
-      const MAX_PER_CATEGORY = 12;
-      const grouped: Record<string, string[]> = {};
-      for (const p of products) {
-        const cat = p.category?.name ?? 'Geral';
-        if (!grouped[cat]) grouped[cat] = [];
-        if (grouped[cat].length < MAX_PER_CATEGORY) {
+      // Também verifica histórico recente (últimas 4 mensagens do usuário) para contexto
+      const recentUserMessages = await prisma.message.findMany({
+        where: { sessionId, role: 'user' },
+        orderBy: { createdAt: 'desc' },
+        take: 4,
+        select: { content: true },
+      });
+      const recentText = recentUserMessages.map(m => m.content).join(' ');
+      const mentionedFromHistory = detectMentionedCategories(recentText, categoryNames);
+
+      // União: categorias mencionadas agora OU nas últimas 4 mensagens
+      const relevantCats = [...new Set([...mentioned, ...mentionedFromHistory])];
+
+      // 📦 Busca produtos SOMENTE das categorias relevantes (query seletiva)
+      let productSection = '';
+      if (relevantCats.length > 0) {
+        const relevantProducts = await prisma.product.findMany({
+          where: {
+            active: true,
+            category: {
+              name: { in: relevantCats },
+              storeId: session.storeId,
+            },
+          },
+          include: { category: true },
+          orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
+          take: 40, // máx 40 produtos mesmo com muitas categorias
+        });
+
+        const grouped: Record<string, string[]> = {};
+        for (const p of relevantProducts) {
+          const cat = p.category?.name ?? 'Geral';
+          if (!grouped[cat]) grouped[cat] = [];
           grouped[cat].push(p.name);
         }
+
+        productSection = '\n\nPRODUTOS DISPONÍVEIS (categorias solicitadas):\n' +
+          Object.entries(grouped)
+            .map(([cat, items]) => `[${cat}]\n${items.map(i => `  • ${i}`).join('\n')}`)
+            .join('\n\n');
+
+        console.log(`[AI] Injetando ${relevantProducts.length} produtos de: ${relevantCats.join(', ')}`);
+      } else {
+        console.log(`[AI] Sem categoria detectada — prompt só com lista de categorias`);
       }
-      const topCategories = Object.entries(grouped).slice(0, MAX_CATEGORIES);
-      const formattedProducts = topCategories
-        .map(([cat, items]) => {
-          const extra = (grouped[cat].length < (products.filter(p => (p.category?.name ?? 'Geral') === cat).length))
-            ? ` (+${products.filter(p => (p.category?.name ?? 'Geral') === cat).length - MAX_PER_CATEGORY} mais)`
-            : '';
-          return `[${cat}]\n${items.map(i => `  • ${i}`).join('\n')}${extra}`;
-        })
-        .join('\n\n');
 
-      // 🧠 PROMPT VICK 4.0 — RESPOSTAS CURTAS + AFUNILAMENTO POR SUBCATEGORIA
-      const systemPrompt = `
-Você é a Vick, consultora da Vilpack — empresa de embalagens.
-Seja DIRETA, AMIGÁVEL e BREVE. Máximo 3 frases por resposta, salvo quando listar produtos.
+      // 🧠 PROMPT BASE — só categorias + regras (tokens fixos ~300)
+      const systemPrompt = `Você é a Vick, consultora da Vilpack — empresa de embalagens.
+Seja DIRETA, AMIGÁVEL e BREVE. Máximo 3 frases por resposta, salvo ao listar produtos.
 
-REGRAS ABSOLUTAS:
-- Nunca use parágrafos longos. Prefira listas curtas.
-- Nunca repita informações que o cliente já deu.
-- Nunca invente produtos fora do catálogo abaixo.
-- Preços são passados pelo WhatsApp — nunca cite valores.
-- Não use "Olá!" repetidamente. Seja natural.
+REGRAS:
+- Nunca invente produtos. Use apenas os listados abaixo.
+- Preços são enviados pelo WhatsApp — nunca cite valores.
+- Não repita informações que o cliente já deu.
+- Prefira listas curtas a parágrafos longos.
 
-FLUXO DE ATENDIMENTO (siga em ordem, sem pular etapas):
-1. NOME — Se ainda não souber, pergunte o nome do cliente.
-2. INTERESSE — Pergunte qual tipo de produto o cliente busca (ex: sacolas, caixas, papel).
-3. AFUNILAMENTO — Se a categoria tiver muitos itens, pergunte a subcategoria. Exemplo:
-   • "Temos sacolas lisas, recicláveis, personalizadas e para padaria. Qual te interessa?"
-   Liste apenas os TIPOS existentes no catálogo para aquela categoria, não liste todos os produtos ainda.
-4. PRODUTO — Depois de saber a subcategoria, liste os produtos específicos (máx. 5 por vez).
-5. CONTATO — Quando o cliente demonstrar interesse, peça o WhatsApp para enviar orçamento.
+FLUXO:
+1. Pergunte o nome (se não souber).
+2. Pergunte qual categoria de produto o cliente busca.
+3. Se a categoria tiver muitos produtos, pergunte o tipo/subcategoria antes de listar tudo.
+4. Liste os produtos específicos (máx. 5 por vez).
+5. Quando o cliente demonstrar interesse, peça o WhatsApp para orçamento.
 
-CATÁLOGO VILPACK:
-${formattedProducts}
+CATEGORIAS DISPONÍVEIS:
+${categoryList}${productSection}
 
-HANDOFF: Quando tiver nome + interesse + WhatsApp, use EXATAMENTE este marcador:
+HANDOFF — quando tiver nome + interesse + WhatsApp, use EXATAMENTE:
 ### [RESUMO_FINAL]
 - **Cliente:** [Nome]
 - **WhatsApp:** [Telefone]
-- **Segmento:** [Ramo do cliente]
+- **Segmento:** [Ramo]
 - **Interesse:** [Produtos]
 ---
-"Perfeito! Passando para nosso time agora. Em breve entrarão em contato!"
-`;
+"Perfeito! Passando para nosso time agora. Em breve entrarão em contato!"`;
 
-      // ⚡ INTERCEPTAÇÃO DO "START"
-      if (message.toLowerCase() === 'start') {
-         return "Oi! Sou a Vick da Vilpack 😊 Qual tipo de embalagem você está precisando?";
-      }
-
-      // 📜 Busca histórico de mensagens
+      // 📜 Busca histórico de mensagens (últimas 16 — suficiente e econômico)
       const history = await prisma.message.findMany({
         where: { sessionId },
-        orderBy: { createdAt: "asc" },
-        take: 20, // Limita para não estourar tokens
+        orderBy: { createdAt: 'asc' },
+        take: 16,
       });
 
-      // Formata histórico para o Gemini
       const historyContents = history.map((msg) => ({
-        role: msg.role === "assistant" ? "model" : "user",
+        role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }],
       }));
 
-      // Adiciona mensagem atual e System Prompt (via injeção no user message ou histórico)
-      // Como fallback para compatibilidade de SDK, injetamos o System Prompt no início.
       const contents = [
         {
-          role: "user",
-          parts: [{ text: systemPrompt + "\n\nEntendeu sua missão?" }],
+          role: 'user',
+          parts: [{ text: systemPrompt + '\n\nEntendeu?' }],
         },
         {
-          role: "model",
-          parts: [{ text: "Entendido. Sou a Vick da Vilpack — vou ser direta, amigável e breve, guiando o cliente pelo catálogo por etapas." }],
+          role: 'model',
+          parts: [{ text: 'Entendido. Sou a Vick da Vilpack — direta, amigável e breve.' }],
         },
         ...historyContents,
         {
-          role: "user",
+          role: 'user',
           parts: [{ text: message }],
         },
       ];
 
       // 🤖 Chamada da IA com retry automático em caso de 429
-      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
       const reply = await callGeminiWithRetry(async () => {
         const chat = model.startChat({
-          history: contents.slice(0, -1), // Tudo exceto a última mensagem
+          history: contents.slice(0, -1),
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 300,   // Limita tamanho da resposta (~200-250 palavras max)
+            maxOutputTokens: 300,
           },
         });
         const result = await chat.sendMessage(message);
         return result.response.text();
       });
 
-      if (!reply) {
-        throw new Error("Resposta vazia da IA");
-      }
+      if (!reply) throw new Error('Resposta vazia da IA');
 
       // 🧠 CAPTURA DE LEAD HÍBRIDA (Determinística + IA sob demanda)
       try {
-        // Camada 1: Regex (Sempre roda, custo zero)
         const deterministicData = leadCaptureService.extractDeterministicData(message);
-        
-        // Camada 2: IA Estruturada (Gatilhos inteligentes e Cache interno)
         const aiLeadData = await leadCaptureService.extractAiData(sessionId, message, reply);
-        
-        // Persistência Resiliente
         await leadCaptureService.updateLead(sessionId, deterministicData, aiLeadData);
       } catch (e: any) {
         console.warn(`[CHAT_LEAD_FALLBACK] Falha silenciosa na captura: ${e.message}`);
@@ -217,37 +214,21 @@ HANDOFF: Quando tiver nome + interesse + WhatsApp, use EXATAMENTE este marcador:
 
       // 💾 Salva mensagens no banco
       await prisma.$transaction([
-        prisma.message.create({
-          data: {
-            sessionId,
-            role: "user",
-            content: message,
-          },
-        }),
-        prisma.message.create({
-          data: {
-            sessionId,
-            role: "assistant",
-            content: reply,
-          },
-        }),
+        prisma.message.create({ data: { sessionId, role: 'user', content: message } }),
+        prisma.message.create({ data: { sessionId, role: 'assistant', content: reply } }),
       ]);
 
       return reply;
     } catch (error: any) {
-      console.error(
-        "Erro completo na IA:",
-        JSON.stringify(error, null, 2)
-      );
+      console.error('Erro completo na IA:', JSON.stringify(error, null, 2));
       throw error;
     }
   },
 
   async getChatHistory(sessionId: string) {
-    const history = await prisma.message.findMany({
+    return prisma.message.findMany({
       where: { sessionId },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: 'asc' },
     });
-    return history;
   },
 };
