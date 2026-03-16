@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { CreateProductModal } from "@/components/admin/CreateProductModal";
 
 interface Product {
   id: string;
@@ -313,6 +314,7 @@ const AdminCatalog = () => {
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 sm:w-64"
             />
+            <CreateProductModal onProductCreated={fetchProducts} />
             {selectedProducts.size > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
