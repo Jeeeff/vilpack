@@ -51,7 +51,7 @@ const HeroSection = () => {
                 Ver Catálogo <ArrowRight className="ml-2" size={18} />
               </a>
             </Button>
-            <Button size="lg" variant="outline" asChild className="border-white/20 text-white hover:bg-white hover:text-black">
+            <Button size="lg" variant="outline" asChild className="border-white text-white hover:bg-white hover:text-black">
               <a href="#contato">Solicitar Orçamento</a>
             </Button>
           </div>

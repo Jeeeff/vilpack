@@ -23,21 +23,21 @@ const Footer = () => (
           </ul>
         </div>
 
-        {/* Contact */}
-        <div>
-          <h4 className="font-semibold mb-4">Contato</h4>
-          <ul className="space-y-3 text-sm text-secondary-foreground/70">
-            <li className="flex items-center gap-2">
-              <Phone size={14} className="text-primary" /> (00) 0000-0000
-            </li>
-            <li className="flex items-center gap-2">
-              <Mail size={14} className="text-primary" /> contato@vilpack.com.br
-            </li>
-            <li className="flex items-center gap-2">
-              <MapPin size={14} className="text-primary" /> São Paulo, SP — Brasil
-            </li>
-          </ul>
-        </div>
+         {/* Contact */}
+         <div>
+           <h4 className="font-semibold mb-4">Contato</h4>
+           <ul className="space-y-3 text-sm text-secondary-foreground/70">
+             <li className="flex items-center gap-2">
+               <Phone size={14} className="text-primary" /> (11) 99611-3977
+             </li>
+             <li className="flex items-center gap-2">
+               <Mail size={14} className="text-primary" /> vendas@vilpack.com
+             </li>
+             <li className="flex items-center gap-2">
+               <MapPin size={14} className="text-primary" /> Atibaia, SP — Brasil
+             </li>
+           </ul>
+         </div>
       </div>
 
       <div className="border-t border-secondary-foreground/10 mt-10 pt-6 text-center text-xs text-secondary-foreground/50">
