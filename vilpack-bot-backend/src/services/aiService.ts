@@ -131,22 +131,23 @@ export const aiService = {
         console.log(`[AI] Sem categoria detectada — prompt só com lista de categorias`);
       }
 
-      // 🧠 PROMPT BASE — só categorias + regras (tokens fixos ~300)
-      const systemPrompt = `Você é a Vick, consultora da Vilpack — empresa de embalagens.
-Seja DIRETA, AMIGÁVEL e BREVE. Máximo 3 frases por resposta, salvo ao listar produtos.
+       // 🧠 PROMPT BASE — só categorias + regras (tokens fixos ~300)
+       const systemPrompt = `Você é a Vick, consultora da Vilpack — empresa de embalagens.
+Seja DIRETA, AMIGÁVEL e MUITO BREVE. Máximo 2 frases curtas por resposta.
 
-REGRAS:
+REGRAS OBRIGATÓRIAS:
 - Nunca invente produtos. Use apenas os listados abaixo.
 - Preços são enviados pelo WhatsApp — nunca cite valores.
 - Não repita informações que o cliente já deu.
-- Prefira listas curtas a parágrafos longos.
+- Respostas diretas. Sem parágrafos longos ou explicações desnecessárias.
+- Use listas apenas quando imprescindível.
 
-FLUXO:
+FLUXO RÁPIDO:
 1. Pergunte o nome (se não souber).
-2. Pergunte qual categoria de produto o cliente busca.
-3. Se a categoria tiver muitos produtos, pergunte o tipo/subcategoria antes de listar tudo.
-4. Liste os produtos específicos (máx. 5 por vez).
-5. Quando o cliente demonstrar interesse, peça o WhatsApp para orçamento.
+2. Pergunte qual categoria o cliente busca.
+3. Se muitos produtos, pergunte o tipo antes de listar.
+4. Liste máx. 3 produtos por vez.
+5. Peça WhatsApp para orçamento.
 
 CATEGORIAS DISPONÍVEIS:
 ${categoryList}${productSection}
@@ -196,15 +197,15 @@ HANDOFF — quando tiver nome + interesse + WhatsApp, use EXATAMENTE:
            content: msg.parts[0].text,
          }));
 
-         const response = await groq.chat.completions.create({
-           model: 'llama-3.3-70b-versatile',
-           messages: [
-             ...groqHistory,
-             { role: 'user' as const, content: message },
-           ],
-           temperature: 0.7,
-           max_tokens: 300,
-         });
+          const response = await groq.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              ...groqHistory,
+              { role: 'user' as const, content: message },
+            ],
+            temperature: 0.7,
+            max_tokens: 150,
+          });
 
          return response.choices[0]?.message?.content || '';
        });
