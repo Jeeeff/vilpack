@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { API_URL } from "@/config/api";
 import { Upload, FileText, ImagePlus, CheckCircle2, XCircle, Loader2, Package, Trash2 } from "lucide-react";
@@ -52,6 +53,8 @@ const AdminCatalog = () => {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [search, setSearch] = useState('');
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { fetchProducts(); }, []);
@@ -119,6 +122,44 @@ const AdminCatalog = () => {
     }
   };
 
+  const handleBatchDelete = async () => {
+    if (selectedProducts.size === 0) return;
+    setBatchDeleting(true);
+    const token = localStorage.getItem('admin_token');
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      for (const productId of selectedProducts) {
+        try {
+          const res = await fetch(`${API_URL}/admin/products/${productId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch {
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} produto(s) excluído(s).`);
+        setProducts((prev) => prev.filter((p) => !selectedProducts.has(p.id)));
+        setSelectedProducts(new Set());
+        fetchProducts();
+      }
+      if (errorCount > 0) {
+        toast.error(`${errorCount} erro(s) ao excluir produtos.`);
+      }
+    } finally {
+      setBatchDeleting(false);
+    }
+  };
+
   const handleImageUpload = async (productId: string, file: File) => {
     setUploading(productId);
     const formData = new FormData();
@@ -143,10 +184,32 @@ const AdminCatalog = () => {
     }
   };
 
+  const toggleProductSelection = (productId: string) => {
+    const newSelected = new Set(selectedProducts);
+    if (newSelected.has(productId)) {
+      newSelected.delete(productId);
+    } else {
+      newSelected.add(productId);
+    }
+    setSelectedProducts(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedProducts.size === filtered.length) {
+      setSelectedProducts(new Set());
+    } else {
+      const allIds = new Set(filtered.map((p) => p.id));
+      setSelectedProducts(allIds);
+    }
+  };
+
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.category?.name ?? '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const isAllSelected = filtered.length > 0 && selectedProducts.size === filtered.length;
+  const isPartiallySelected = selectedProducts.size > 0 && selectedProducts.size < filtered.length;
 
   return (
     <div className="space-y-8">
@@ -230,20 +293,62 @@ const AdminCatalog = () => {
 
       {/* Product Table */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <div>
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
               Produtos Cadastrados
               <Badge variant="secondary" className="ml-2">{products.length}</Badge>
             </CardTitle>
+            {selectedProducts.size > 0 && (
+              <p className="text-sm text-zinc-500 mt-2">
+                {selectedProducts.size} produto(s) selecionado(s)
+              </p>
+            )}
           </div>
-          <Input
-            placeholder="Buscar por nome ou tipo..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-64"
-          />
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Input
+              placeholder="Buscar por nome ou tipo..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 sm:w-64"
+            />
+            {selectedProducts.size > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="shrink-0"
+                    disabled={batchDeleting}
+                  >
+                    {batchDeleting ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excluindo...</>
+                    ) : (
+                      <><Trash2 className="h-4 w-4 mr-2" />Excluir selecionados ({selectedProducts.size})</>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir {selectedProducts.size} produto(s)?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Os produtos selecionados serão removidos permanentemente do catálogo. Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-red-500 hover:bg-red-600"
+                      onClick={handleBatchDelete}
+                    >
+                      Excluir {selectedProducts.size}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {filtered.length === 0 ? (
@@ -255,6 +360,15 @@ const AdminCatalog = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <div className="flex items-center">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Selecionar todos"
+                      />
+                    </div>
+                  </TableHead>
                   <TableHead className="w-16">Imagem</TableHead>
                   <TableHead>Nome do Produto</TableHead>
                   <TableHead>Tipo / Categoria</TableHead>
@@ -265,7 +379,14 @@ const AdminCatalog = () => {
               </TableHeader>
               <TableBody>
                 {filtered.map((product) => (
-                  <TableRow key={product.id}>
+                  <TableRow key={product.id} className={selectedProducts.has(product.id) ? 'bg-blue-50' : ''}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedProducts.has(product.id)}
+                        onCheckedChange={() => toggleProductSelection(product.id)}
+                        aria-label={`Selecionar ${product.name}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       {getImageSrc(product.imageUrl) ? (
                         <img
