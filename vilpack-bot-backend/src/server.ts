@@ -12,8 +12,11 @@ async function start() {
   console.log('Starting server on port ' + PORT);
   
   // Validate Env Vars
-  if (!process.env.GEMINI_API_KEY) {
-      console.warn('⚠️ GEMINI_API_KEY is missing! AI features will fail.');
+  if (!process.env.GROQ_API_KEY) {
+      console.warn('⚠️ GROQ_API_KEY is missing! AI features will fail.');
+  }
+  if (!process.env.JWT_SECRET) {
+      console.warn('⚠️ JWT_SECRET is missing! Authentication may fail.');
   }
 
   try {
