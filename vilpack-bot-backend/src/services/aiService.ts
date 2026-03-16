@@ -1,29 +1,31 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from 'groq-sdk';
 import prisma from "../config/prisma";
 import { leadCaptureService } from "./leadCaptureService";
 
-// Initialize the Google Gen AI SDK
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// Initialize the Groq SDK
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY!,
+});
 
-// Retry com backoff exponencial para erros 429 do Gemini
+// Retry com backoff exponencial para erros 429 do Groq
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function callGeminiWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+async function callGroqWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (err: any) {
-      const is429 = err?.status === 429 || err?.message?.includes('429') || err?.message?.includes('quota');
+      const is429 = err?.status === 429 || err?.message?.includes('429') || err?.message?.includes('quota') || err?.message?.includes('rate_limit');
       if (is429 && attempt < maxRetries) {
         const delay = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
-        console.warn(`[GEMINI] Rate limit (429). Aguardando ${delay}ms antes da tentativa ${attempt + 2}/${maxRetries + 1}...`);
+        console.warn(`[GROQ] Rate limit (429). Aguardando ${delay}ms antes da tentativa ${attempt + 2}/${maxRetries + 1}...`);
         await sleep(delay);
         continue;
       }
       throw err;
     }
   }
-  throw new Error('Gemini: máximo de tentativas atingido');
+  throw new Error('Groq: máximo de tentativas atingido');
 }
 
 /**
@@ -186,20 +188,26 @@ HANDOFF — quando tiver nome + interesse + WhatsApp, use EXATAMENTE:
         },
       ];
 
-      // 🤖 Chamada da IA com retry automático em caso de 429
-      const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+       // 🤖 Chamada da IA com retry automático em caso de 429
+       const reply = await callGroqWithRetry(async () => {
+         // Converte histórico do formato Gemini para formato OpenAI (compatível com Groq)
+         const groqHistory: any[] = contents.slice(0, -1).map((msg: any) => ({
+           role: msg.role === 'model' ? 'assistant' : 'user',
+           content: msg.parts[0].text,
+         }));
 
-      const reply = await callGeminiWithRetry(async () => {
-        const chat = model.startChat({
-          history: contents.slice(0, -1),
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 300,
-          },
-        });
-        const result = await chat.sendMessage(message);
-        return result.response.text();
-      });
+         const response = await groq.chat.completions.create({
+           model: 'llama-3.3-70b-versatile',
+           messages: [
+             ...groqHistory,
+             { role: 'user' as const, content: message },
+           ],
+           temperature: 0.7,
+           max_tokens: 300,
+         });
+
+         return response.choices[0]?.message?.content || '';
+       });
 
       if (!reply) throw new Error('Resposta vazia da IA');
 

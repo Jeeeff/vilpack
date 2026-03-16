@@ -1,8 +1,10 @@
 import prisma from "../config/prisma";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from 'groq-sdk';
 import crypto from 'crypto';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY!,
+});
 
 // Configurações de Hardening (Produção 2026)
 const EXTRACTION_COOLDOWN_MS = 3 * 60 * 1000; // 3 minutos entre extrações de IA
@@ -120,9 +122,9 @@ export const leadCaptureService = {
         return null;
       }
 
-      console.log(`[LEAD_IA] Iniciando extração Gemini para sessão ${sessionId}...`);
+       console.log(`[LEAD_IA] Iniciando extração Groq para sessão ${sessionId}...`);
 
-      const extractionPrompt = `
+       const extractionPrompt = `
 Extraia dados comerciais estruturados da conversa entre Consultora (Vick) e Cliente.
 Retorne APENAS JSON. Use null para campos não encontrados.
 
@@ -137,14 +139,21 @@ Campos:
 - qualificationScore: Inteiro 0-100.
 
 Histórico Recente:
-        ${history.map(m => `${m.role === 'user' ? 'Cliente' : 'Vick'}: ${m.content}`).join('\n')}
+${history.map(m => `${m.role === 'user' ? 'Cliente' : 'Vick'}: ${m.content}`).join('\n')}
 Cliente (última): ${userMessage}
-Vik (resposta): ${assistantReply}
+Vick (resposta): ${assistantReply}
 `;
 
-      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-      const result = await model.generateContent(extractionPrompt);
-      const data = this.extractJson(result.response.text());
+       const result = await groq.chat.completions.create({
+         model: 'llama-3.3-70b-versatile',
+         messages: [
+           { role: 'user' as const, content: extractionPrompt },
+         ],
+         temperature: 0.3, // Mais baixo para extração estruturada
+         max_tokens: 500,
+       });
+
+       const data = this.extractJson(result.choices[0]?.message?.content || '{}');
 
       // Atualiza metadados de controle
       await prisma.lead.update({
@@ -301,9 +310,15 @@ FORMATO:
 🔥 STATUS: [Frio/Morno/Quente]
 🚀 AÇÃO: [Próximo passo]
 `;
-      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-      const result = await model.generateContent(summaryPrompt);
-      return result.response.text().trim();
+      const result = await groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'user' as const, content: summaryPrompt },
+        ],
+        temperature: 0.5,
+        max_tokens: 300,
+      });
+      return result.choices[0]?.message?.content?.trim() || null;
     } catch (error) {
       console.warn("[LEAD_SUMMARY] Falha ao gerar resumo.");
       return null;
