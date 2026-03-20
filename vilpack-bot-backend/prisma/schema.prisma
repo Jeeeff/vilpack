@@ -7,15 +7,18 @@ datasource db {
 }
 
 model Store {
-  id          String     @id @default(uuid())
-  name        String
-  slug        String     @unique
-  phoneNumber String
-  categories  Category[]
-  sessions    Session[]
-  orders      Order[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id                 String               @id @default(uuid())
+  name               String
+  slug               String               @unique
+  phoneNumber        String
+  categories         Category[]
+  sessions           Session[]
+  orders             Order[]
+  whatsappInstances  WhatsappInstance[]
+  automationRules    AutomationRule[]
+  botKnowledgeItems  BotKnowledgeItem[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 }
 
 model Category {
@@ -71,15 +74,16 @@ model Lead {
   leadSource         String     @default("chat_vik")
   status             String     @default("NEW") 
   priority           String     @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
-  isRead             Boolean    @default(false)    // Controle de notificações
-  followUpAt         DateTime?                     // Agendamento de follow-up
+  isRead             Boolean    @default(false)
+  followUpAt         DateTime?
   qualificationScore Int        @default(0)
-  lastLeadExtractionAt DateTime?                     // Controle de cooldown de IA
-  lastLeadContextHash  String?                       // Cache de contexto para evitar re-extração
+  lastLeadExtractionAt DateTime?
+  lastLeadContextHash  String?
   lastInteractionAt  DateTime   @default(now())
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
   summary            LeadConversationSummary?
+  whatsappContacts   WhatsappContact[]
 }
 
 model LeadConversationSummary {
@@ -147,10 +151,160 @@ model OrderItem {
 }
 
 model AdminUser {
+  id          String               @id @default(uuid())
+  username    String               @unique
+  password    String
+  role        String               @default("VIEWER") // MASTER, VIEWER
+  assignments WhatsappAssignment[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// WHATSAPP MODULE — tabelas isoladas
+// Não alteram nenhuma tabela existente acima.
+// ─────────────────────────────────────────────
+
+/// Instância da Evolution API vinculada a uma Store
+model WhatsappInstance {
+  id            String                 @id @default(uuid())
+  storeId       String
+  store         Store                  @relation(fields: [storeId], references: [id])
+  instanceName  String                 @unique
+  status        String                 @default("disconnected") // disconnected, connecting, connected
+  qrCode        String?
+  webhookUrl    String?
+  botEnabled    Boolean                @default(true)
+  conversations WhatsappConversation[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+}
+
+/// Contato WhatsApp (número real ou grupo)
+model WhatsappContact {
+  id            String                 @id @default(uuid())
+  phone         String                 @unique  // e.g. "5511999990000"
+  name          String?
+  pushName      String?
+  profilePicUrl String?
+  isGroup       Boolean                @default(false)
+  leadId        String?                // FK opcional para Lead existente
+  lead          Lead?                  @relation(fields: [leadId], references: [id])
+  conversations WhatsappConversation[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+}
+
+/// Conversa (thread entre instância e contato)
+model WhatsappConversation {
+  id           String                  @id @default(uuid())
+  instanceId   String
+  instance     WhatsappInstance        @relation(fields: [instanceId], references: [id])
+  contactId    String
+  contact      WhatsappContact         @relation(fields: [contactId], references: [id])
+  status       String                  @default("open") // open, resolved, pending
+  botEnabled   Boolean                 @default(true)   // bot ativo nesta conversa
+  unreadCount  Int                     @default(0)
+  lastMessageAt DateTime?
+  messages     WhatsappMessage[]
+  tags         WhatsappConversationTag[]
+  assignments  WhatsappAssignment[]
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  @@unique([instanceId, contactId])
+}
+
+/// Mensagem trafegada pelo WhatsApp
+model WhatsappMessage {
+  id             String               @id @default(uuid())
+  conversationId String
+  conversation   WhatsappConversation @relation(fields: [conversationId], references: [id])
+  evolutionId    String?              @unique // ID externo do Evolution (deduplicação)
+  direction      String               // inbound | outbound
+  fromMe         Boolean              @default(false)
+  type           String               @default("text") // text | image | audio | document | sticker | reaction
+  content        String?
+  status         String               @default("sent") // sent | delivered | read | failed
+  attachments    WhatsappAttachment[]
+  botExecutionLogs BotExecutionLog[]
+  timestamp      DateTime             @default(now())
+  createdAt      DateTime             @default(now())
+}
+
+/// Anexo de mídia vinculado a uma mensagem
+model WhatsappAttachment {
+  id         String          @id @default(uuid())
+  messageId  String
+  message    WhatsappMessage @relation(fields: [messageId], references: [id])
+  type       String          // image | audio | document | video
+  mimeType   String?
+  fileName   String?
+  fileSize   Int?
+  storageKey String          // chave no storage (S3 ou local)
+  url        String?         // URL pública/assinada (gerada sob demanda)
+  createdAt  DateTime        @default(now())
+}
+
+/// Tag de conversa (ex.: "urgente", "orçamento", "suporte")
+model WhatsappConversationTag {
+  id             String               @id @default(uuid())
+  conversationId String
+  conversation   WhatsappConversation @relation(fields: [conversationId], references: [id])
+  tag            String
+  createdAt      DateTime             @default(now())
+
+  @@unique([conversationId, tag])
+}
+
+/// Atribuição de conversa a um agente/admin
+model WhatsappAssignment {
+  id             String               @id @default(uuid())
+  conversationId String
+  conversation   WhatsappConversation @relation(fields: [conversationId], references: [id])
+  adminUserId    String
+  adminUser      AdminUser            @relation(fields: [adminUserId], references: [id])
+  assignedAt     DateTime             @default(now())
+}
+
+/// Regra de automação do bot (horário, status, fila)
+model AutomationRule {
+  id          String   @id @default(uuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  name        String
+  trigger     String   // keyword | always | outside_hours
+  triggerValue String? // palavra-chave, etc.
+  action      String   // reply | handoff | tag | assign
+  actionValue String?  // texto da resposta, nome da tag, etc.
+  active      Boolean  @default(true)
+  priority    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Item de conhecimento para o bot (RAG futuro)
+model BotKnowledgeItem {
   id        String   @id @default(uuid())
-  username  String   @unique
-  password  String
-  role      String   @default("VIEWER") // MASTER, VIEWER
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  title     String
+  content   String
+  tags      String[] // array de tags para filtragem
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Log de execução do bot para rastreabilidade
+model BotExecutionLog {
+  id         String          @id @default(uuid())
+  messageId  String
+  message    WhatsappMessage @relation(fields: [messageId], references: [id])
+  decision   String          // replied | handed_off | ignored | rule_matched
+  reasoning  String?         // motivo da decisão
+  ruleId     String?         // se disparado por AutomationRule
+  tokensUsed Int?
+  latencyMs  Int?
+  createdAt  DateTime        @default(now())
 }
