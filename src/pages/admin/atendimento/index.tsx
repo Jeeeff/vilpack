@@ -1,20 +1,26 @@
 /**
  * AtendimentoInbox — layout principal do módulo de atendimento WhatsApp.
- * Estrutura: sidebar de conversas | área de chat | (futuramente) painel de info
+ * Estrutura: sidebar de conversas | área de chat
  *
- * Tabs de navegação interna:
- *   - Inbox: lista de conversas + chat
+ * Tabs:
+ *   - Inbox:       lista de conversas + chat
  *   - Configuração: QR Code e status da instância
- *   - Automação: regras do bot (placeholder Etapa 6)
+ *   - Automação:   regras do bot (placeholder Etapa 6)
+ *
+ * Etapa 4:
+ *   - Paginação cursor-based de mensagens
+ *   - Atualização de status de mensagem via Socket.IO (whatsapp:message_status)
+ *   - Shift+Enter para quebra de linha; Enter para enviar
+ *   - Scroll automático inteligente (nova msg vs. carregar mais)
+ *   - Badge de não-lidas total no header da sidebar
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Configuracao from './Configuracao';
-import Automacao from './Automacao';
-import { Link, useLocation } from 'react-router-dom';
+import Automacao    from './Automacao';
 import { ConversationSidebar, type ConversationSummary } from '@/components/admin/whatsapp/ConversationSidebar';
 import { ChatHeader } from '@/components/admin/whatsapp/ChatHeader';
 import { MessageList, type MessageItem } from '@/components/admin/whatsapp/MessageList';
-import { useWhatsappSocket } from '@/hooks/useWhatsappSocket';
+import { useWhatsappSocket, type MessageStatusPayload } from '@/hooks/useWhatsappSocket';
 import { API_URL } from '@/config/api';
 import { Button } from '@/components/ui/button';
 import { Send, MessageSquare, Settings, Bot } from 'lucide-react';
@@ -42,18 +48,24 @@ interface ConversationDetail extends ConversationSummary {
   botPaused:  boolean;
   botEnabled: boolean;
   contact: {
-    phone:    string;
-    name?:    string | null;
+    phone:     string;
+    name?:     string | null;
     pushName?: string | null;
   };
+}
+
+interface MessagePage {
+  messages:   MessageItem[];
+  nextCursor: string | null;
+  hasMore:    boolean;
 }
 
 // ─── tabs ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'inbox',   label: 'Inbox',        Icon: MessageSquare },
-  { id: 'config',  label: 'Configuração',  Icon: Settings },
-  { id: 'auto',    label: 'Automação',     Icon: Bot },
+  { id: 'inbox',  label: 'Inbox',       Icon: MessageSquare },
+  { id: 'config', label: 'Configuração', Icon: Settings },
+  { id: 'auto',   label: 'Automação',    Icon: Bot },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -62,16 +74,29 @@ type TabId = typeof TABS[number]['id'];
 
 export default function AtendimentoInbox() {
   const [activeTab, setActiveTab] = useState<TabId>('inbox');
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [selectedId, setSelectedId]       = useState<string | undefined>();
-  const [selectedConv, setSelectedConv]   = useState<ConversationDetail | undefined>();
-  const [messages, setMessages]           = useState<MessageItem[]>([]);
-  const [draft, setDraft]                 = useState('');
-  const [loadingConvs, setLoadingConvs]   = useState(false);
-  const [loadingMsgs, setLoadingMsgs]     = useState(false);
-  const [sending, setSending]             = useState(false);
 
-  // Carrega lista de conversas
+  // Conversas
+  const [conversations, setConversations]   = useState<ConversationSummary[]>([]);
+  const [loadingConvs, setLoadingConvs]     = useState(false);
+
+  // Conversa selecionada
+  const [selectedId, setSelectedId]         = useState<string | undefined>();
+  const [selectedConv, setSelectedConv]     = useState<ConversationDetail | undefined>();
+
+  // Mensagens + paginação
+  const [messages, setMessages]             = useState<MessageItem[]>([]);
+  const [loadingMsgs, setLoadingMsgs]       = useState(false);
+  const [loadingMore, setLoadingMore]       = useState(false);
+  const [hasMore, setHasMore]               = useState(false);
+  const [nextCursor, setNextCursor]         = useState<string | null>(null);
+
+  // Input
+  const [draft, setDraft]                   = useState('');
+  const [sending, setSending]               = useState(false);
+  const textareaRef                         = useRef<HTMLTextAreaElement>(null);
+
+  // ─── conversas ──────────────────────────────────────────────────────────────
+
   const loadConversations = useCallback(async () => {
     setLoadingConvs(true);
     try {
@@ -86,18 +111,28 @@ export default function AtendimentoInbox() {
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  // Carrega mensagens da conversa selecionada
+  // ─── mensagens (primeira carga) ─────────────────────────────────────────────
+
   const loadMessages = useCallback(async (convId: string) => {
     setLoadingMsgs(true);
+    setMessages([]);
+    setHasMore(false);
+    setNextCursor(null);
     try {
-      const [detail, msgs] = await Promise.all([
+      const [detail, page] = await Promise.all([
         apiFetch(`/conversations/${convId}`),
-        apiFetch(`/conversations/${convId}/messages`),
+        apiFetch(`/conversations/${convId}/messages?limit=50`) as Promise<MessagePage>,
       ]);
       setSelectedConv(detail);
-      setMessages(Array.isArray(msgs) ? msgs : []);
+      setMessages(page.messages);
+      setHasMore(page.hasMore);
+      setNextCursor(page.nextCursor);
       // Marca como lida
       await apiFetch(`/conversations/${convId}/read`, { method: 'POST' });
+      // Zera unreadCount localmente (sem re-fetch completo)
+      setConversations((prev) =>
+        prev.map((c) => c.id === convId ? { ...c, unreadCount: 0 } : c),
+      );
     } catch {
       // silencioso
     } finally {
@@ -110,32 +145,59 @@ export default function AtendimentoInbox() {
     loadMessages(id);
   }, [loadMessages]);
 
-  // Envio de mensagem
+  // ─── paginação cursor-based (carregar mais) ──────────────────────────────────
+
+  const handleLoadMore = useCallback(async (cursor: string) => {
+    if (!selectedId || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await apiFetch(
+        `/conversations/${selectedId}/messages?limit=50&cursor=${cursor}`,
+      ) as MessagePage;
+      // Prepend: mensagens mais antigas vêm antes das existentes
+      setMessages((prev) => [...page.messages, ...prev]);
+      setHasMore(page.hasMore);
+      setNextCursor(page.nextCursor);
+    } catch {
+      // silencioso
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [selectedId, loadingMore]);
+
+  // ─── envio de mensagem ───────────────────────────────────────────────────────
+
   const handleSend = useCallback(async () => {
-    if (!draft.trim() || !selectedId || sending) return;
+    const text = draft.trim();
+    if (!text || !selectedId || sending) return;
     setSending(true);
     try {
-      await apiFetch('/messages/send', {
+      const result = await apiFetch('/messages/send', {
         method: 'POST',
-        body: JSON.stringify({ conversationId: selectedId, text: draft.trim() }),
-      });
+        body: JSON.stringify({ conversationId: selectedId, text }),
+      }) as { success: boolean; message: MessageItem };
       setDraft('');
-      await loadMessages(selectedId);
+      if (result.message) {
+        setMessages((prev) => [...prev, result.message]);
+      }
     } catch {
       // silencioso
     } finally {
       setSending(false);
+      textareaRef.current?.focus();
     }
-  }, [draft, selectedId, sending, loadMessages]);
+  }, [draft, selectedId, sending]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
+    // Shift+Enter: comportamento padrão (quebra de linha)
   };
 
-  // Takeover / release
+  // ─── takeover / release ──────────────────────────────────────────────────────
+
   const handleTakeOver = useCallback(async () => {
     if (!selectedId) return;
     try {
@@ -143,9 +205,9 @@ export default function AtendimentoInbox() {
         method: 'POST',
         body: JSON.stringify({ conversationId: selectedId }),
       });
-      await loadMessages(selectedId);
+      setSelectedConv((prev) => prev ? { ...prev, botPaused: true } : prev);
     } catch {}
-  }, [selectedId, loadMessages]);
+  }, [selectedId]);
 
   const handleRelease = useCallback(async () => {
     if (!selectedId) return;
@@ -154,24 +216,65 @@ export default function AtendimentoInbox() {
         method: 'POST',
         body: JSON.stringify({ conversationId: selectedId }),
       });
-      await loadMessages(selectedId);
+      setSelectedConv((prev) => prev ? { ...prev, botPaused: false } : prev);
     } catch {}
-  }, [selectedId, loadMessages]);
+  }, [selectedId]);
 
-  // Socket.IO — atualiza em tempo real
+  // ─── Socket.IO — tempo real ──────────────────────────────────────────────────
+
   useWhatsappSocket({
+    // Nova mensagem recebida via webhook
     onMessage: ({ conversationId, message }) => {
       if (conversationId === selectedId) {
         setMessages((prev) => [...prev, message as MessageItem]);
+        // Marca como lida automaticamente se a conversa está aberta
+        apiFetch(`/conversations/${conversationId}/read`, { method: 'POST' }).catch(() => {});
+        setConversations((prev) =>
+          prev.map((c) => c.id === conversationId ? { ...c, unreadCount: 0 } : c),
+        );
+      } else {
+        // Incrementa unread da conversa não aberta
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === conversationId
+              ? { ...c, unreadCount: (c.unreadCount ?? 0) + 1 }
+              : c,
+          ),
+        );
       }
+      // Atualiza preview da sidebar
       loadConversations();
     },
-    onConversationUpdate: () => {
-      loadConversations();
+
+    // Atualização de status de mensagem (delivered/read)
+    onMessageStatus: ({ conversationId, messageId, status }: MessageStatusPayload) => {
+      if (conversationId === selectedId) {
+        setMessages((prev) =>
+          prev.map((m) => m.id === messageId ? { ...m, status } : m),
+        );
+      }
+    },
+
+    // Atualização geral de conversa (e.g. lastMessageAt)
+    onConversationUpdate: (conversation) => {
+      const conv = conversation as Partial<ConversationSummary> & { id?: string };
+      if (!conv.id) return;
+      setConversations((prev) =>
+        prev.map((c) => c.id === conv.id ? { ...c, ...conv } : c),
+      );
+    },
+
+    // Takeover via socket (outro admin ou bot)
+    onHandoff: ({ conversationId, botEnabled }) => {
+      if (conversationId === selectedId) {
+        setSelectedConv((prev) =>
+          prev ? { ...prev, botEnabled, botPaused: !botEnabled } : prev,
+        );
+      }
     },
   });
 
-  // ─── render ────────────────────────────────────────────────────────────────
+  // ─── render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col h-full -m-8">
@@ -224,13 +327,21 @@ export default function AtendimentoInbox() {
                   onRelease={handleRelease}
                 />
 
-                <MessageList messages={messages} loading={loadingMsgs} />
+                <MessageList
+                  messages={messages}
+                  loading={loadingMsgs}
+                  loadingMore={loadingMore}
+                  hasMore={hasMore}
+                  nextCursor={nextCursor}
+                  onLoadMore={handleLoadMore}
+                />
 
                 {/* Input de mensagem */}
                 <div className="border-t bg-white px-4 py-3 flex items-end gap-2">
                   <textarea
+                    ref={textareaRef}
                     className="flex-1 resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[40px] max-h-32"
-                    placeholder="Digite uma mensagem… (Enter para enviar)"
+                    placeholder="Digite uma mensagem… (Enter envia, Shift+Enter quebra linha)"
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -258,7 +369,6 @@ export default function AtendimentoInbox() {
 
       {activeTab === 'config' && (
         <div className="flex-1 overflow-auto p-8">
-          {/* Importação dinâmica para não bloquear o bundle */}
           <ConfiguracaoTab />
         </div>
       )}
@@ -272,7 +382,7 @@ export default function AtendimentoInbox() {
   );
 }
 
-// ─── sub-páginas inline (evita rotas extras) ─────────────────────────────────
+// ─── sub-páginas inline ───────────────────────────────────────────────────────
 
 function ConfiguracaoTab() { return <Configuracao />; }
 function AutomacaoTab()    { return <Automacao />; }

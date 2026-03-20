@@ -9,6 +9,7 @@ import { evolutionService } from '../services/evolutionService.js';
 import { whatsappConversationService } from '../services/whatsappConversationService.js';
 import { whatsappMessageService } from '../services/whatsappMessageService.js';
 import { whatsappHandoffService } from '../services/whatsappHandoffService.js';
+import { whatsappRealtimeService } from '../services/whatsappRealtimeService.js';
 import { featureFlags } from '../config/featureFlags.js';
 import {
   sendMessageSchema,
@@ -152,11 +153,11 @@ export async function markConversationAsRead(req: Request, res: Response, next: 
 export async function listMessages(req: Request, res: Response, next: NextFunction) {
   if (!requireFlag(res)) return;
   try {
-    const id   = param(req.params['id']!);
-    const take = queryNum(req.query['take'] as string | undefined, 50);
-    const skip = queryNum(req.query['skip'] as string | undefined, 0);
-    const messages = await whatsappMessageService.listMessages(id, take, skip);
-    res.json(messages);
+    const id     = param(req.params['id']!);
+    const limit  = queryNum(req.query['limit'] as string | undefined, 50);
+    const cursor = req.query['cursor'] as string | undefined;
+    const page   = await whatsappMessageService.listMessages(id, limit, cursor);
+    res.json(page);
   } catch (err) {
     next(err);
   }
@@ -192,6 +193,14 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
       content:           text,
       status:            'sent',
     });
+
+    // Emite em tempo real para o painel admin
+    whatsappRealtimeService.emitNewMessage(conversationId, message);
+    // Atualiza lastMessageAt na conversa
+    await whatsappConversationService.updateConversation(conversationId, {
+      lastMessageAt: new Date(),
+    });
+    whatsappRealtimeService.emitConversationUpdate({ id: conversationId, lastMessageAt: new Date() });
 
     res.json({ success: true, message });
   } catch (err) {

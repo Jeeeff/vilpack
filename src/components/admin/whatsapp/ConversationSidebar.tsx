@@ -1,6 +1,8 @@
 /**
  * ConversationSidebar — lista de conversas do inbox (coluna esquerda).
  * Estilo WhatsApp Web: avatar, nome, última mensagem, timestamp, badge unread.
+ *
+ * Header mostra total de não-lidas (badge vermelho) quando > 0.
  */
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -29,10 +31,12 @@ interface Props {
 }
 
 export function ConversationSidebar({ conversations, selectedId, onSelect, loading }: Props) {
+  const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
+
   if (loading) {
     return (
       <div className="flex flex-col h-full">
-        <div className="p-4 border-b font-semibold text-sm">Conversas</div>
+        <SidebarHeader totalUnread={0} count={0} />
         <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
           Carregando…
         </div>
@@ -43,7 +47,7 @@ export function ConversationSidebar({ conversations, selectedId, onSelect, loadi
   if (!conversations.length) {
     return (
       <div className="flex flex-col h-full">
-        <div className="p-4 border-b font-semibold text-sm">Conversas</div>
+        <SidebarHeader totalUnread={0} count={0} />
         <div className="flex-1 flex flex-col items-center justify-center gap-2 text-muted-foreground p-8 text-center">
           <MessageCircle className="h-8 w-8 opacity-30" />
           <p className="text-sm">Nenhuma conversa ainda</p>
@@ -55,9 +59,7 @@ export function ConversationSidebar({ conversations, selectedId, onSelect, loadi
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b font-semibold text-sm">
-        Conversas ({conversations.length})
-      </div>
+      <SidebarHeader totalUnread={totalUnread} count={conversations.length} />
       <div className="flex-1 overflow-y-auto">
         {conversations.map((conv) => {
           const displayName =
@@ -93,17 +95,30 @@ export function ConversationSidebar({ conversations, selectedId, onSelect, loadi
               {/* Conteúdo */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm truncate">{displayName}</span>
+                  <span className={cn(
+                    'text-sm truncate',
+                    conv.unreadCount > 0 ? 'font-semibold' : 'font-medium',
+                  )}>
+                    {displayName}
+                  </span>
                   {timeAgo && (
-                    <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                    <span className={cn(
+                      'text-xs ml-2 flex-shrink-0',
+                      conv.unreadCount > 0 ? 'text-green-600 font-medium' : 'text-muted-foreground',
+                    )}>
                       {timeAgo}
                     </span>
                   )}
                 </div>
                 <div className="flex items-center justify-between mt-0.5">
-                  <p className="text-xs text-muted-foreground truncate">{preview}</p>
+                  <p className={cn(
+                    'text-xs truncate',
+                    conv.unreadCount > 0 ? 'text-foreground' : 'text-muted-foreground',
+                  )}>
+                    {preview}
+                  </p>
                   {conv.unreadCount > 0 && (
-                    <Badge className="ml-2 flex-shrink-0 bg-green-500 text-white text-xs px-1.5 min-w-[20px] text-center">
+                    <Badge className="ml-2 flex-shrink-0 bg-green-500 hover:bg-green-500 text-white text-xs px-1.5 min-w-[20px] text-center">
                       {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
                     </Badge>
                   )}
@@ -116,3 +131,21 @@ export function ConversationSidebar({ conversations, selectedId, onSelect, loadi
     </div>
   );
 }
+
+// ─── sub-componente do header ─────────────────────────────────────────────────
+
+function SidebarHeader({ totalUnread, count }: { totalUnread: number; count: number }) {
+  return (
+    <div className="p-4 border-b flex items-center justify-between">
+      <span className="font-semibold text-sm">
+        Conversas{count > 0 ? ` (${count})` : ''}
+      </span>
+      {totalUnread > 0 && (
+        <Badge className="bg-red-500 hover:bg-red-500 text-white text-xs px-1.5 min-w-[20px] text-center">
+          {totalUnread > 99 ? '99+' : totalUnread}
+        </Badge>
+      )}
+    </div>
+  );
+}
+

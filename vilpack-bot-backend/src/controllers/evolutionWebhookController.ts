@@ -164,7 +164,19 @@ async function handleMessagesUpdate(data: Record<string, unknown>) {
     const providerMessageId = (upd['key'] as Record<string, unknown>)?.['id'] as string | undefined;
     const status = (upd['update'] as Record<string, unknown>)?.['status'] as string | undefined;
     if (providerMessageId && status) {
-      await whatsappMessageService.updateStatus(providerMessageId, status.toLowerCase());
+      const normalizedStatus = status.toLowerCase();
+      await whatsappMessageService.updateStatus(providerMessageId, normalizedStatus);
+
+      // Emite atualização de status em tempo real para o painel admin
+      const msg = await whatsappMessageService.findByProviderMessageId(providerMessageId);
+      if (msg) {
+        whatsappRealtimeService.emit('whatsapp:message_status', {
+          conversationId:    msg.conversationId,
+          providerMessageId: msg.providerMessageId,
+          messageId:         msg.id,
+          status:            normalizedStatus,
+        });
+      }
     }
   }
 }
