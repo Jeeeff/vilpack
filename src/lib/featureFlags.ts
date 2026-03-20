@@ -7,3 +7,5 @@ export const featureFlags = {
   ENABLE_WHATSAPP_PANEL: import.meta.env.VITE_ENABLE_WHATSAPP_PANEL === 'true',
   ADMIN_REALTIME_ENABLED: import.meta.env.VITE_ADMIN_REALTIME_ENABLED === 'true',
 } as const;
+
+export type FeatureFlag = keyof typeof featureFlags;

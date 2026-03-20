@@ -2,9 +2,12 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import http from 'node:http';
 import app from './app';
 import prisma from './config/prisma';
 import bcrypt from 'bcryptjs';
+import { initSocketServer } from './config/socketServer';
+import { whatsappRealtimeService } from './services/whatsappRealtimeService';
 
 const PORT = process.env.PORT || 3001;
 
@@ -39,7 +42,13 @@ async function start() {
       console.log('✅ Master Admin created: admin / ' + (process.env.ADMIN_PASSWORD || 'vilpack2026'));
     }
 
-    const server = app.listen(PORT, () => {
+    const server = http.createServer(app);
+
+    // Socket.IO — inicializado uma única vez, injetado no realtime service
+    const io = initSocketServer(server);
+    whatsappRealtimeService.init(io);
+
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
     });

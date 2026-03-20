@@ -11,6 +11,7 @@ import AdminLogin from "./pages/admin/Login";
 import AdminLayout from "./pages/admin/Layout";
 import AdminLeads from "./pages/admin/Leads";
 import AdminCatalog from "./pages/admin/Catalog";
+import AtendimentoInbox from "./pages/admin/atendimento/index";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const AppRoutes = () => {
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="leads" element={<AdminLeads />} />
           <Route path="catalog" element={<AdminCatalog />} />
+          <Route path="atendimento" element={<AtendimentoInbox />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Outlet, useNavigate, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, ShoppingBag, LogOut } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, MessageSquare, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const AdminLayout = () => {
@@ -43,6 +43,15 @@ const AdminLayout = () => {
             >
               <ShoppingBag className="mr-2 h-4 w-4" />
               Catálogo de Produtos
+            </Button>
+          </Link>
+          <Link to="/admin/atendimento">
+            <Button
+              variant={location.pathname.includes("atendimento") ? "default" : "ghost"}
+              className="w-full justify-start"
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Atendimento
             </Button>
           </Link>
         </nav>

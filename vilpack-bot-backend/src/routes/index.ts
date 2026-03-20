@@ -7,6 +7,8 @@ import aiRoutes from './aiRoutes';
 import sessionRoutes from './sessionRoutes';
 import orderRoutes from './orderRoutes';
 import adminRoutes from './adminRoutes';
+import adminWhatsappRoutes from './adminWhatsappRoutes';
+import evolutionWebhookRoutes from './evolutionWebhookRoutes';
 
 const router = Router();
 
@@ -17,6 +19,8 @@ router.use('/ai', aiRoutes);
 router.use('/session', sessionRoutes);
 router.use('/order', orderRoutes);
 router.use('/admin', adminRoutes);
+router.use('/admin/whatsapp', adminWhatsappRoutes);
+router.use('/webhooks/evolution', evolutionWebhookRoutes);
 
 router.get('/force-migrate', async (req, res) => {
     try {
