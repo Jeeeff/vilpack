@@ -11,11 +11,13 @@ import { ptBR } from "date-fns/locale";
 import {
   Search, Filter, MessageSquare, Phone, Mail, TrendingUp, Briefcase,
   FileText, ExternalLink, Loader2, AlertCircle, CheckCircle2, XCircle,
-  Clock, MessageCircle, Users, Zap, Star, RefreshCw,
+  Clock, MessageCircle, Users, Zap, Star, RefreshCw, CalendarCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { API_URL } from "@/config/api";
+import { FichaComercial } from "@/components/admin/FichaComercial";
+import type { LeadComercial } from "@/components/admin/FichaComercial";
 
 // ── types ──────────────────────────────────────────────────────────────────────
 
@@ -25,6 +27,8 @@ interface Lead {
   whatsapp: string | null;
   email: string | null;
   segment: string | null;
+  companyName: string | null;
+  city: string | null;
   status: string;
   priority: string;
   isRead: boolean;
@@ -32,8 +36,18 @@ interface Lead {
   internalNotes: string | null;
   lastInteractionAt: string;
   createdAt: string;
+  followUpAt: string | null;
   interestSummary: string | null;
   productsOfInterest: string | null;
+  // commercial / CRM fields
+  lastPurchaseAt: string | null;
+  lastPurchaseValue: string | null;
+  lastUnitPrice: string | null;
+  mainProducts: string | null;
+  purchaseFrequency: string | null;
+  avgTicket: string | null;
+  commercialCondition: string | null;
+  nextAction: string | null;
   summary?: {
     summary: string | null;
     needDescription: string | null;
@@ -233,6 +247,14 @@ const AdminLeads = () => {
       if (res.ok) { toast({ title: "Notas salvas." }); fetchLeads(); }
     } catch (e) { console.error(e); }
     finally { setIsUpdating(false); }
+  };
+
+  /** Merge partial comercial updates back into selectedLead state */
+  const handleFichaSaved = (updated: Partial<LeadComercial>) => {
+    if (!selectedLead) return;
+    setSelectedLead({ ...selectedLead, ...updated });
+    // also update the list row so followUpAt / nextAction show in table
+    setLeads((prev) => prev.map((l) => l.id === selectedLead.id ? { ...l, ...updated } : l));
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -592,17 +614,55 @@ const AdminLeads = () => {
                         <span style={{ color: "hsl(0 0% 45%)", fontWeight: 600 }}>/100</span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleWhatsAppHandoff(selectedLead)}
-                      className="inline-flex items-center gap-2 px-4 h-9 rounded-lg text-sm font-semibold transition-colors"
-                      style={{
-                        background: "hsl(var(--admin-yellow))",
-                        color: "#1C1C1E",
-                      }}
-                    >
-                      <MessageCircle size={14} />
-                      Assumir no WhatsApp
-                    </button>
+                    {/* Quick actions */}
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      <button
+                        onClick={() => handleWhatsAppHandoff(selectedLead)}
+                        className="inline-flex items-center gap-2 px-4 h-9 rounded-lg text-sm font-semibold transition-colors"
+                        style={{
+                          background: "hsl(var(--admin-yellow))",
+                          color: "#1C1C1E",
+                        }}
+                      >
+                        <MessageCircle size={14} />
+                        Assumir no WhatsApp
+                      </button>
+                      <button
+                        onClick={() => handleUpdateStatus(selectedLead.id, "CONVERTED")}
+                        disabled={isUpdating || selectedLead.status === "CONVERTED"}
+                        className="inline-flex items-center gap-2 px-3 h-9 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                        style={{
+                          background: "hsl(270 60% 95%)",
+                          color: "#7C3AED",
+                          border: "1px solid #7C3AED40",
+                        }}
+                        title="Marcar como convertido"
+                      >
+                        <CheckCircle2 size={14} />
+                        Convertido
+                      </button>
+                      <button
+                        onClick={() => {
+                          const date = prompt(
+                            "Data do follow-up (AAAA-MM-DD):",
+                            selectedLead.followUpAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+                          );
+                          if (date !== null) handleFichaSaved({ followUpAt: date || null });
+                        }}
+                        className="inline-flex items-center gap-2 px-3 h-9 rounded-lg text-sm font-semibold transition-colors"
+                        style={{
+                          background: "hsl(var(--admin-blue-soft, 210 60% 95%))",
+                          color: "#2563EB",
+                          border: "1px solid #2563EB40",
+                        }}
+                        title="Agendar follow-up"
+                      >
+                        <CalendarCheck size={14} />
+                        {selectedLead.followUpAt
+                          ? format(new Date(selectedLead.followUpAt), "dd/MM", { locale: ptBR })
+                          : "Follow-up"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -614,10 +674,10 @@ const AdminLeads = () => {
               >
                 {/* Left column */}
                 <div
-                  className="w-[320px] shrink-0 flex flex-col gap-5 p-6 overflow-y-auto border-r"
+                  className="w-[340px] shrink-0 flex flex-col gap-4 p-5 overflow-y-auto border-r admin-scrollbar"
                   style={{ borderColor: "hsl(var(--admin-border))" }}
                 >
-                  {/* Briefing */}
+                  {/* Briefing by Vick */}
                   <section>
                     <div className="admin-label mb-2 flex items-center gap-1.5">
                       <TrendingUp size={11} /> Briefing by Vick
@@ -630,31 +690,11 @@ const AdminLeads = () => {
                     </div>
                   </section>
 
-                  {/* Notes */}
-                  <section>
-                    <div className="admin-label mb-2 flex items-center gap-1.5">
-                      <FileText size={11} /> Notas do time
-                    </div>
-                    <Textarea
-                      placeholder="Observações estratégicas…"
-                      className="min-h-[100px] text-sm resize-none bg-white"
-                      style={{ borderColor: "hsl(var(--admin-border))" }}
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                    />
-                    <button
-                      onClick={handleSaveNotes}
-                      disabled={isUpdating}
-                      className="mt-2 w-full h-9 rounded-lg text-sm font-semibold transition-colors inline-flex items-center justify-center"
-                      style={{
-                        background: "hsl(var(--admin-yellow))",
-                        color: "#1C1C1E",
-                        opacity: isUpdating ? 0.6 : 1,
-                      }}
-                    >
-                      {isUpdating ? <Loader2 size={14} className="animate-spin" /> : "Salvar notas"}
-                    </button>
-                  </section>
+                  {/* Ficha Comercial */}
+                  <FichaComercial
+                    lead={selectedLead}
+                    onSaved={handleFichaSaved}
+                  />
 
                   {/* Status flow */}
                   <section>

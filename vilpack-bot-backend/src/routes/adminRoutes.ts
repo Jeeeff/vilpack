@@ -15,6 +15,7 @@ router.get('/leads/:id', authMiddleware, adminController.getLead);
 router.patch('/leads/:id/status', authMiddleware, adminController.updateStatus);
 router.patch('/leads/:id/priority', authMiddleware, adminController.updatePriority);
 router.patch('/leads/:id/notes', authMiddleware, adminController.updateNotes);
+router.patch('/leads/:id/comercial', authMiddleware, adminController.updateLeadComercial);
 
 // Product Management (Protected)
 // Importar CSV de produtos — deve vir ANTES de /:id para não conflitar

@@ -72,6 +72,7 @@ model Lead {
   email                String?
   segment              String?
   companyName          String?
+  city                 String?                 // cidade / região do cliente
   interestSummary      String?
   productsOfInterest   String?
   internalNotes        String?
@@ -86,6 +87,15 @@ model Lead {
   lastInteractionAt    DateTime                @default(now())
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
+  // ── Ficha Comercial ──────────────────────────────────────────────────────────
+  lastPurchaseAt        DateTime?               // data da última compra
+  lastPurchaseValue     Decimal?   @db.Decimal(10,2) // valor da última compra
+  lastUnitPrice         String?                 // último preço unitário anotado (texto livre)
+  mainProducts          String?                 // produtos mais comprados (texto livre, csv)
+  purchaseFrequency     String?                 // frequência estimada (ex: "mensal", "quinzenal")
+  avgTicket             Decimal?   @db.Decimal(10,2) // ticket médio estimado
+  commercialCondition   String?                 // condição comercial habitual (ex: "30 dias", "à vista 5%")
+  nextAction            String?                 // próxima ação recomendada (texto livre)
   summary              LeadConversationSummary?
 }
 
