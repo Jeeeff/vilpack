@@ -330,11 +330,11 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                                       window.open(`https://wa.me/${VILPACK_PHONE}?text=${text}`, '_blank');
                                   }}
                               >
-                                  <div className="flex items-center gap-2">
+                                   <div className="flex items-center gap-2">
                                     <MessageCircle className="h-5 w-5 fill-current" />
-                                    <span>Finalizar no WhatsApp</span>
+                                    <span>Falar com nosso time agora</span>
                                   </div>
-                                  <span className="text-[10px] opacity-80 font-normal">Falar com consultor humano</span>
+                                   <span className="text-[10px] opacity-80 font-normal">Receba seu orçamento pelo WhatsApp</span>
                               </Button>
                           </div>
                         )}

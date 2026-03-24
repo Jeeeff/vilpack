@@ -159,7 +159,7 @@ HANDOFF — quando tiver nome + interesse + WhatsApp, use EXATAMENTE:
 - **Segmento:** [Ramo]
 - **Interesse:** [Produtos]
 ---
-"Perfeito! Passando para nosso time agora. Em breve entrarão em contato!"`;
+"Ótimo! Clique no botão abaixo para falar agora com nosso time no WhatsApp e receber seu orçamento."`;
 
       // 📜 Busca histórico de mensagens (últimas 16 — suficiente e econômico)
       const history = await prisma.message.findMany({
