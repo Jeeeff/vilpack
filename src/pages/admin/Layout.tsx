@@ -1,17 +1,67 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useNavigate, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, ShoppingBag, MessageSquare, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  Users,
+  MessageSquare,
+  Wifi,
+  Zap,
+  Settings,
+  LogOut,
+  ChevronRight,
+  Bell,
+  Package,
+  BarChart2,
+} from "lucide-react";
+
+// ── nav structure ──────────────────────────────────────────────────────────────
+
+interface NavItem {
+  label: string;
+  icon: React.ElementType;
+  to: string;
+  match: string;
+}
+
+interface NavGroup {
+  group: string;
+  items: NavItem[];
+}
+
+const NAV: NavGroup[] = [
+  {
+    group: "Principal",
+    items: [
+      { label: "Dashboard",   icon: BarChart2,     to: "/admin/leads",    match: "leads"   },
+      { label: "CRM / Leads", icon: Users,         to: "/admin/leads",    match: "leads"   },
+      { label: "Catálogo",    icon: Package,       to: "/admin/catalog",  match: "catalog" },
+    ],
+  },
+  {
+    group: "Atendimento",
+    items: [
+      { label: "Inbox WhatsApp", icon: MessageSquare, to: "/admin/atendimento", match: "atendimento" },
+      { label: "Conexão",        icon: Wifi,          to: "/admin/conexao",     match: "conexao"     },
+      { label: "Automação",      icon: Zap,           to: "/admin/automacao",   match: "automacao"   },
+    ],
+  },
+  {
+    group: "Sistema",
+    items: [
+      { label: "Configurações", icon: Settings, to: "/admin/configuracoes", match: "configuracoes" },
+    ],
+  },
+];
+
+// ── component ──────────────────────────────────────────────────────────────────
 
 const AdminLayout = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate   = useNavigate();
+  const location   = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("admin_token");
-    if (!token) {
-      navigate("/admin/login");
-    }
+    if (!token) navigate("/admin/login");
   }, [navigate]);
 
   const handleLogout = () => {
@@ -19,54 +69,167 @@ const AdminLayout = () => {
     navigate("/admin/login");
   };
 
+  const isActive = (match: string) => location.pathname.includes(match);
+
+  // Page title from current route
+  const currentItem = NAV.flatMap((g) => g.items).find((i) => isActive(i.match));
+  const pageTitle   = currentItem?.label ?? "Admin";
+
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-md">
-        <div className="p-6 border-b">
-          <h1 className="text-xl font-bold text-primary">Vilpack Admin</h1>
+    <div
+      className="flex h-screen overflow-hidden"
+      style={{ background: "hsl(var(--admin-bg))" }}
+    >
+      {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
+      <aside
+        className="admin-sidebar flex flex-col shrink-0 transition-[width] duration-200"
+        style={{ width: collapsed ? "60px" : "216px" }}
+      >
+        {/* Brand */}
+        <div
+          className="flex items-center gap-3 px-3 py-[18px] border-b"
+          style={{ borderColor: "hsl(var(--admin-sidebar-border))" }}
+        >
+          <div
+            className="flex items-center justify-center shrink-0 rounded-lg font-black text-sm select-none"
+            style={{
+              width: "34px",
+              height: "34px",
+              minWidth: "34px",
+              background: "hsl(var(--admin-yellow))",
+              color: "#1C1C1E",
+              fontSize: "15px",
+            }}
+          >
+            V
+          </div>
+
+          {!collapsed && (
+            <div className="min-w-0">
+              <div
+                className="font-bold text-sm leading-tight truncate"
+                style={{ color: "hsl(0 0% 92%)" }}
+              >
+                Vilpack
+              </div>
+              <div
+                className="text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: "hsl(0 0% 38%)" }}
+              >
+                CRM
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={() => setCollapsed((c) => !c)}
+            className="ml-auto p-1 rounded transition-colors hover:bg-white/10"
+            style={{ color: "hsl(0 0% 40%)" }}
+            aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
+          >
+            <ChevronRight
+              size={13}
+              style={{ transform: collapsed ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 200ms" }}
+            />
+          </button>
         </div>
-        <nav className="p-4 space-y-2">
-          <Link to="/admin/leads">
-            <Button
-              variant={location.pathname.includes("leads") ? "default" : "ghost"}
-              className="w-full justify-start"
-            >
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Leads & Pedidos
-            </Button>
-          </Link>
-          <Link to="/admin/catalog">
-            <Button
-              variant={location.pathname.includes("catalog") ? "default" : "ghost"}
-              className="w-full justify-start"
-            >
-              <ShoppingBag className="mr-2 h-4 w-4" />
-              Catálogo de Produtos
-            </Button>
-          </Link>
-          <Link to="/admin/atendimento">
-            <Button
-              variant={location.pathname.includes("atendimento") ? "default" : "ghost"}
-              className="w-full justify-start"
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Atendimento
-            </Button>
-          </Link>
+
+        {/* Nav groups */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2">
+          {NAV.map((group) => (
+            <div key={group.group} className="mb-1">
+              {!collapsed && (
+                <div className="sidebar-group-label">{group.group}</div>
+              )}
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active = isActive(item.match);
+                  const Icon   = item.icon;
+                  return (
+                    <Link
+                      key={item.to + item.match}
+                      to={item.to}
+                      className={`sidebar-item${active ? " active" : ""}`}
+                      style={collapsed ? { justifyContent: "center", paddingLeft: "0", paddingRight: "0" } : {}}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      <Icon size={16} className="shrink-0" />
+                      {!collapsed && (
+                        <span className="flex-1 truncate">{item.label}</span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
-        <div className="absolute bottom-0 w-64 p-4 border-t bg-white">
-          <Button variant="outline" className="w-full" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
+
+        {/* Logout */}
+        <div
+          className="px-2 py-3 border-t"
+          style={{ borderColor: "hsl(var(--admin-sidebar-border))" }}
+        >
+          <button
+            onClick={handleLogout}
+            className="sidebar-item w-full"
+            style={collapsed ? { justifyContent: "center", paddingLeft: "0", paddingRight: "0" } : {}}
+            title={collapsed ? "Sair" : undefined}
+          >
+            <LogOut size={16} className="shrink-0" />
+            {!collapsed && <span className="flex-1">Sair</span>}
+          </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto p-8">
-        <Outlet />
-      </main>
+      {/* ── Main column ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-col flex-1 min-w-0">
+
+        {/* Topbar */}
+        <header
+          className="shrink-0 flex items-center justify-between px-6 bg-white border-b"
+          style={{ height: "56px", borderColor: "hsl(var(--admin-border))" }}
+        >
+          <div className="flex flex-col justify-center">
+            <span
+              className="font-semibold tracking-tight leading-tight"
+              style={{ fontSize: "0.9375rem", color: "hsl(var(--admin-text-primary))" }}
+            >
+              {pageTitle}
+            </span>
+            <span
+              className="text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: "hsl(var(--admin-text-muted))" }}
+            >
+              Vilpack CRM
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-gray-100"
+              style={{ color: "hsl(var(--admin-text-secondary))" }}
+              aria-label="Notificações"
+            >
+              <Bell size={15} />
+            </button>
+            <div
+              className="flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs select-none"
+              style={{
+                background: "hsl(var(--admin-yellow))",
+                color: "#1C1C1E",
+              }}
+            >
+              A
+            </div>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 };

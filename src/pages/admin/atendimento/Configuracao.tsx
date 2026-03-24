@@ -9,6 +9,7 @@ import { InstanceStatusCard } from '@/components/admin/whatsapp/InstanceStatusCa
 import { QRCodeConnectCard } from '@/components/admin/whatsapp/QRCodeConnectCard';
 import { useWhatsappSocket } from '@/hooks/useWhatsappSocket';
 import { API_URL } from '@/config/api';
+import { Smartphone, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
@@ -41,7 +42,6 @@ export default function Configuracao() {
     setError(null);
     try {
       const data = await fetchFromApi('/instance/qrcode', token);
-      // Evolution retorna base64 em data.qrcode.base64 ou data.base64
       const base64 =
         data?.qrcode?.base64 ?? data?.base64 ?? data?.qr ?? null;
       if (base64) {
@@ -50,7 +50,7 @@ export default function Configuracao() {
         );
         setStatus('connecting');
       }
-    } catch (e) {
+    } catch {
       setError('Não foi possível obter o QR Code. Verifique se a instância existe.');
     } finally {
       setLoading(false);
@@ -64,11 +64,11 @@ export default function Configuracao() {
       const data = await fetchFromApi('/instance/status', token);
       const state = data?.instance?.state ?? data?.state ?? 'disconnected';
       setStatus(
-        state === 'open' ? 'connected' :
-        state === 'connecting' ? 'connecting' :
+        state === 'open'       ? 'connected'    :
+        state === 'connecting' ? 'connecting'   :
         'disconnected',
       );
-    } catch (e) {
+    } catch {
       setError('Não foi possível verificar o status da instância.');
     } finally {
       setLoading(false);
@@ -76,44 +76,64 @@ export default function Configuracao() {
   }, [token]);
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
-      <div>
-        <h2 className="text-xl font-bold">Configuração WhatsApp</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Conecte sua instância da Evolution API ao painel de atendimento.
-        </p>
-      </div>
+    <div className="admin-page-bg min-h-full p-6 md:p-8">
+      <div className="max-w-lg mx-auto space-y-6">
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive text-sm px-4 py-3 rounded-lg border border-destructive/20">
-          {error}
+        {/* Page header */}
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 rounded-xl bg-[hsl(var(--admin-yellow-soft))] flex items-center justify-center shrink-0">
+            <Smartphone className="h-5 w-5 text-[hsl(42_80%_38%)]" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-[hsl(var(--admin-text-primary))]">
+              Configuração WhatsApp
+            </h2>
+            <p className="text-sm text-[hsl(var(--admin-text-secondary))] mt-0.5">
+              Conecte sua instância da Evolution API ao painel de atendimento.
+            </p>
+          </div>
         </div>
-      )}
 
-      <InstanceStatusCard status={status} />
+        {/* Error banner */}
+        {error && (
+          <div className="flex items-start gap-3 bg-[hsl(var(--admin-red-soft))] text-red-700 text-sm px-4 py-3 rounded-xl border border-red-200">
+            <span className="shrink-0 mt-0.5">⚠</span>
+            <span>{error}</span>
+          </div>
+        )}
 
-      {status !== 'connected' && (
-        <QRCodeConnectCard
-          qrCode={qrCode}
-          loading={loading}
-          onRefresh={refreshQRCode}
-        />
-      )}
+        {/* Status card */}
+        <InstanceStatusCard status={status} />
 
-      {status === 'connected' && (
-        <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-lg border border-green-200">
-          WhatsApp conectado e pronto para receber mensagens.
+        {/* QR Code card — only when not connected */}
+        {status !== 'connected' && (
+          <QRCodeConnectCard
+            qrCode={qrCode}
+            loading={loading}
+            onRefresh={refreshQRCode}
+          />
+        )}
+
+        {/* Connected success state */}
+        {status === 'connected' && (
+          <div className="flex items-center gap-3 bg-[hsl(var(--admin-green-soft))] text-[hsl(var(--admin-green))] text-sm px-4 py-3 rounded-xl border border-[hsl(142_60%_82%)]">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span className="font-medium">WhatsApp conectado e pronto para receber mensagens.</span>
+          </div>
+        )}
+
+        {/* Check status link */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={checkStatus}
+            disabled={loading}
+            className="flex items-center gap-1.5 text-xs text-[hsl(var(--admin-text-muted))] hover:text-[hsl(var(--admin-text-secondary))] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+            Verificar status manualmente
+          </button>
         </div>
-      )}
 
-      <div className="flex gap-2">
-        <button
-          onClick={checkStatus}
-          disabled={loading}
-          className="text-xs text-muted-foreground underline hover:text-foreground"
-        >
-          Verificar status
-        </button>
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,14 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { 
-  Search, Filter, MessageSquare, Phone, Mail, TrendingUp, User, 
-  Briefcase, Calendar, MessageCircle, FileText, Copy, ExternalLink,
-  Loader2, AlertCircle, CheckCircle2, XCircle, Clock
+import {
+  Search, Filter, MessageSquare, Phone, Mail, TrendingUp, Briefcase,
+  FileText, ExternalLink, Loader2, AlertCircle, CheckCircle2, XCircle,
+  Clock, MessageCircle, Users, Zap, Star, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { API_URL } from "@/config/api";
+
+// ── types ──────────────────────────────────────────────────────────────────────
 
 interface Lead {
   id: string;
@@ -41,45 +42,131 @@ interface Lead {
   session?: {
     messages: {
       id: string;
-      role: 'user' | 'assistant';
+      role: "user" | "assistant";
       content: string;
       createdAt: string;
     }[];
   };
 }
 
+// ── status / priority helpers ─────────────────────────────────────────────────
+
+const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string; Icon: React.ElementType }> = {
+  WAITING_HUMAN: { bg: "hsl(var(--admin-red-soft))",    text: "#DC2626", label: "Aguardando humano", Icon: AlertCircle   },
+  QUALIFIED:     { bg: "hsl(var(--admin-green-soft))",  text: "#16A34A", label: "Qualificado",       Icon: CheckCircle2  },
+  ENGAGED:       { bg: "hsl(var(--admin-blue-soft))",   text: "#2563EB", label: "Engajado",          Icon: TrendingUp    },
+  NEW:           { bg: "hsl(40 14% 94%)",               text: "#6B6B6B", label: "Novo",              Icon: Clock         },
+  CONVERTED:     { bg: "hsl(270 60% 95%)",              text: "#7C3AED", label: "Convertido",        Icon: CheckCircle2  },
+  LOST:          { bg: "hsl(0 0% 93%)",                 text: "#9CA3AF", label: "Perdido",           Icon: XCircle       },
+};
+
+const PRIORITY_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
+  URGENT: { bg: "#DC2626", text: "#fff", label: "Urgente" },
+  HIGH:   { bg: "#EA580C", text: "#fff", label: "Alta"    },
+  MEDIUM: { bg: "#2563EB", text: "#fff", label: "Média"   },
+  LOW:    { bg: "#9CA3AF", text: "#fff", label: "Baixa"   },
+};
+
+const THERMAL = [
+  { min: 75, label: "Quente", bar: "#EF4444", text: "#DC2626" },
+  { min: 50, label: "Morno",  bar: "#F97316", text: "#EA580C" },
+  { min: 25, label: "Frio",   bar: "#3B82F6", text: "#2563EB" },
+  { min: 0,  label: "Gelo",   bar: "#D1D5DB", text: "#9CA3AF" },
+];
+
+function getThermal(score: number) {
+  return THERMAL.find((t) => score >= t.min)!;
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.NEW;
+  const Icon = cfg.Icon;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+      style={{ background: cfg.bg, color: cfg.text }}
+    >
+      <Icon size={11} />
+      {cfg.label}
+    </span>
+  );
+}
+
+function PriorityDot({ priority }: { priority: string }) {
+  const cfg = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.MEDIUM;
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+      style={{ background: cfg.bg, color: cfg.text }}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
+// ── metric card ────────────────────────────────────────────────────────────────
+
+function MetricCard({
+  label, value, sub, accent, Icon,
+}: {
+  label: string; value: string | number; sub?: string; accent?: string; Icon: React.ElementType;
+}) {
+  return (
+    <div
+      className="admin-card flex items-start gap-4 p-5"
+      style={{ flex: "1 1 0" }}
+    >
+      <div
+        className="flex items-center justify-center rounded-xl shrink-0"
+        style={{
+          width: "40px",
+          height: "40px",
+          background: accent ?? "hsl(var(--admin-yellow-soft))",
+        }}
+      >
+        <Icon size={18} style={{ color: accent ? "#fff" : "hsl(var(--admin-yellow))" }} />
+      </div>
+      <div className="min-w-0">
+        <div className="admin-label">{label}</div>
+        <div className="admin-metric-value mt-0.5">{value}</div>
+        {sub && (
+          <div className="text-xs mt-0.5" style={{ color: "hsl(var(--admin-text-muted))" }}>
+            {sub}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── page ───────────────────────────────────────────────────────────────────────
+
 const AdminLeads = () => {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [notes, setNotes] = useState("");
+  const [leads,          setLeads]          = useState<Lead[]>([]);
+  const [filteredLeads,  setFilteredLeads]  = useState<Lead[]>([]);
+  const [selectedLead,   setSelectedLead]   = useState<Lead | null>(null);
+  const [search,         setSearch]         = useState("");
+  const [statusFilter,   setStatusFilter]   = useState("ALL");
+  const [isLoading,      setIsLoading]      = useState(true);
+  const [isUpdating,     setIsUpdating]     = useState(false);
+  const [notes,          setNotes]          = useState("");
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchLeads();
-  }, []);
+  useEffect(() => { fetchLeads(); }, []);
 
   useEffect(() => {
     let result = leads;
-    
     if (search) {
       const s = search.toLowerCase();
-      result = result.filter(l => 
-        l.name?.toLowerCase().includes(s) || 
-        l.whatsapp?.includes(s) || 
-        l.email?.toLowerCase().includes(s) ||
-        l.segment?.toLowerCase().includes(s)
+      result = result.filter(
+        (l) =>
+          l.name?.toLowerCase().includes(s) ||
+          l.whatsapp?.includes(s) ||
+          l.email?.toLowerCase().includes(s) ||
+          l.segment?.toLowerCase().includes(s),
       );
     }
-
-    if (statusFilter !== "ALL") {
-      result = result.filter(l => l.status === statusFilter);
-    }
-
+    if (statusFilter !== "ALL") result = result.filter((l) => l.status === statusFilter);
     setFilteredLeads(result);
   }, [search, statusFilter, leads]);
 
@@ -87,18 +174,12 @@ const AdminLeads = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("admin_token");
-      const response = await fetch(`${API_URL}/admin/leads`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await fetch(`${API_URL}/admin/leads`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (response.ok) {
-        setLeads(await response.json());
-      }
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Falha ao carregar leads.",
-        variant: "destructive"
-      });
+      if (res.ok) setLeads(await res.json());
+    } catch {
+      toast({ title: "Erro", description: "Falha ao carregar leads.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -107,84 +188,53 @@ const AdminLeads = () => {
   const handleOpenDetail = async (leadId: string) => {
     try {
       const token = localStorage.getItem("admin_token");
-      const response = await fetch(`${API_URL}/admin/leads/${leadId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await fetch(`${API_URL}/admin/leads/${leadId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (response.ok) {
-        const data = await response.json();
+      if (res.ok) {
+        const data = await res.json();
         setSelectedLead(data);
         setNotes(data.internalNotes || "");
       }
-    } catch (error) {
-      console.error("Erro ao buscar detalhes:", error);
+    } catch (e) {
+      console.error("Erro ao buscar detalhes:", e);
     }
   };
 
   const handleUpdateStatus = async (leadId: string, newStatus: string) => {
+    setIsUpdating(true);
     try {
       const token = localStorage.getItem("admin_token");
-      const response = await fetch(`${API_URL}/admin/leads/${leadId}/status`, {
+      const res = await fetch(`${API_URL}/admin/leads/${leadId}/status`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: newStatus })
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus }),
       });
-      if (response.ok) {
-        toast({ title: "Sucesso", description: "Status atualizado." });
+      if (res.ok) {
+        toast({ title: "Status atualizado." });
         fetchLeads();
-        if (selectedLead?.id === leadId) {
-          setSelectedLead({ ...selectedLead, status: newStatus });
-        }
+        if (selectedLead?.id === leadId) setSelectedLead({ ...selectedLead, status: newStatus });
       }
-    } catch (error) {
-      console.error("Erro ao atualizar status:", error);
-    }
-  };
-
-  const handleUpdatePriority = async (leadId: string, newPriority: string) => {
-    try {
-      const token = localStorage.getItem("admin_token");
-      const response = await fetch(`${API_URL}/admin/leads/${leadId}/priority`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ priority: newPriority })
-      });
-      if (response.ok) {
-        toast({ title: "Sucesso", description: "Prioridade atualizada." });
-        fetchLeads();
-        if (selectedLead?.id === leadId) {
-          setSelectedLead({ ...selectedLead, priority: newPriority });
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao atualizar prioridade:", error);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const handleSaveNotes = async () => {
     if (!selectedLead) return;
+    setIsUpdating(true);
     try {
       const token = localStorage.getItem("admin_token");
-      const response = await fetch(`${API_URL}/admin/leads/${selectedLead.id}/notes`, {
+      const res = await fetch(`${API_URL}/admin/leads/${selectedLead.id}/notes`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ notes })
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ notes }),
       });
-      if (response.ok) {
-        toast({ title: "Sucesso", description: "Notas salvas." });
-        fetchLeads();
-      }
-    } catch (error) {
-      console.error("Erro ao salvar notas:", error);
-    }
+      if (res.ok) { toast({ title: "Notas salvas." }); fetchLeads(); }
+    } catch (e) { console.error(e); }
+    finally { setIsUpdating(false); }
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -192,220 +242,292 @@ const AdminLeads = () => {
     toast({ title: `${label} copiado!` });
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { class: string, icon: any, label: string }> = {
-      'WAITING_HUMAN': { class: 'bg-red-100 text-red-700 border-red-200', icon: AlertCircle, label: 'Aguardando Humano' },
-      'QUALIFIED': { class: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2, label: 'Qualificado' },
-      'ENGAGED': { class: 'bg-blue-100 text-blue-700 border-blue-200', icon: TrendingUp, label: 'Engajado' },
-      'NEW': { class: 'bg-gray-100 text-gray-700 border-gray-200', icon: Clock, label: 'Novo' },
-      'CONVERTED': { class: 'bg-purple-100 text-purple-700 border-purple-200', icon: CheckCircle2, label: 'Convertido' },
-      'LOST': { class: 'bg-zinc-100 text-zinc-500 border-zinc-200', icon: XCircle, label: 'Perdido' },
-    };
-    
-    const config = variants[status] || variants['NEW'];
-    const Icon = config.icon;
-
-    return (
-      <Badge variant="outline" className={cn("font-semibold px-2 py-1 gap-1.5 flex items-center w-fit", config.class)}>
-        <Icon className="h-3 w-3" />
-        {config.label}
-      </Badge>
-    );
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    const variants: Record<string, { class: string, label: string }> = {
-      'URGENT': { class: 'bg-red-600 text-white border-none', label: 'Urgente' },
-      'HIGH': { class: 'bg-orange-500 text-white border-none', label: 'Alta' },
-      'MEDIUM': { class: 'bg-blue-500 text-white border-none', label: 'Média' },
-      'LOW': { class: 'bg-zinc-400 text-white border-none', label: 'Baixa' },
-    };
-    
-    const config = variants[priority] || variants['MEDIUM'];
-
-    return (
-      <Badge className={cn("text-[9px] h-4 px-1.5 uppercase font-black tracking-tighter", config.class)}>
-        {config.label}
-      </Badge>
-    );
-  };
-
-  const getThermalInfo = (score: number) => {
-    if (score >= 75) return { label: "Quente", color: "text-red-600", bg: "bg-red-500", icon: <TrendingUp className="h-3 w-3" /> };
-    if (score >= 50) return { label: "Morno", color: "text-orange-600", bg: "bg-orange-500", icon: <TrendingUp className="h-3 w-3" /> };
-    if (score >= 25) return { label: "Frio", color: "text-blue-600", bg: "bg-blue-500", icon: <TrendingUp className="h-3 w-3" /> };
-    return { label: "Gelo", color: "text-gray-400", bg: "bg-gray-300", icon: <TrendingUp className="h-3 w-3" /> };
-  };
-
   const handleWhatsAppHandoff = (lead: Lead) => {
     if (!lead.whatsapp) {
       toast({ title: "Erro", description: "WhatsApp não informado.", variant: "destructive" });
       return;
     }
-    
-    const cleanPhone = lead.whatsapp.replace(/\D/g, '');
-    const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-    
+    const phone   = lead.whatsapp.replace(/\D/g, "");
+    const intl    = phone.startsWith("55") ? phone : `55${phone}`;
     const message = encodeURIComponent(
-      `Olá ${lead.name || 'tudo bem'}! Aqui é da Vilpack Embalagens.\n\n` +
-      `Vi seu interesse em ${lead.interestSummary || 'nossas soluções'} para o segmento de ${lead.segment || 'seu negócio'}.\n\n` +
-      `Estou entrando em contato para dar continuidade ao seu atendimento. Como posso te ajudar hoje?`
+      `Olá ${lead.name || "tudo bem"}! Aqui é da Vilpack Embalagens.\n\n` +
+      `Vi seu interesse em ${lead.interestSummary || "nossas soluções"} para o segmento de ${lead.segment || "seu negócio"}.\n\n` +
+      `Estou entrando em contato para dar continuidade ao seu atendimento. Como posso te ajudar hoje?`,
     );
-    
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+    window.open(`https://wa.me/${intl}?text=${message}`, "_blank");
   };
 
+  // ── metrics ──────────────────────────────────────────────────────────────────
+  const total      = leads.length;
+  const urgent     = leads.filter((l) => l.priority === "URGENT").length;
+  const hot        = leads.filter((l) => l.qualificationScore >= 75).length;
+  const converted  = leads.filter((l) => l.status === "CONVERTED").length;
+
+  // ── render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto p-4 md:p-8 min-h-screen bg-zinc-50/30">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div
+      className="min-h-full p-6"
+      style={{ background: "hsl(var(--admin-bg))" }}
+    >
+      {/* Page header */}
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Painel de Performance</span>
-          </div>
-          <h2 className="text-4xl font-black tracking-tight text-zinc-900 flex items-center gap-4">
-            Consultoria de Leads
-            <Badge variant="secondary" className="bg-white border border-zinc-200 text-zinc-900 shadow-sm h-7 px-3">
-              {filteredLeads.length} Ativos
-            </Badge>
-          </h2>
-          <p className="text-zinc-500 mt-2 text-base font-medium">Pipeline comercial inteligente alimentado pela Vick.</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="relative w-full md:w-80 group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-primary transition-colors" />
-            <Input 
-              placeholder="Nome, WhatsApp ou Segmento..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 bg-white border-zinc-200 focus:ring-primary/20 h-12 rounded-xl shadow-sm"
+            <span
+              className="inline-block w-2 h-2 rounded-full animate-pulse"
+              style={{ background: "hsl(var(--admin-yellow))" }}
             />
+            <span className="admin-label">Pipeline Comercial</span>
           </div>
-          
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[220px] bg-white border-zinc-200 h-12 rounded-xl shadow-sm">
-              <Filter className="h-4 w-4 mr-2 text-zinc-400" />
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="ALL">Todos os Status</SelectItem>
-              <SelectItem value="WAITING_HUMAN">Aguardando Humano</SelectItem>
-              <SelectItem value="QUALIFIED">Qualificados</SelectItem>
-              <SelectItem value="ENGAGED">Engajados</SelectItem>
-              <SelectItem value="NEW">Novos</SelectItem>
-              <SelectItem value="CONVERTED">Convertidos</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button 
-            variant="outline" 
-            onClick={fetchLeads} 
-            disabled={isLoading}
-            className="bg-white border-zinc-200 hover:bg-zinc-50 h-12 px-6 rounded-xl shadow-sm transition-all active:scale-95"
+          <h2
+            className="font-bold tracking-tight"
+            style={{ fontSize: "1.5rem", color: "hsl(var(--admin-text-primary))", letterSpacing: "-0.02em" }}
           >
-            <Clock className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
-            {isLoading ? "Sincronizando..." : "Sincronizar"}
-          </Button>
+            CRM / Leads
+          </h2>
+          <p style={{ color: "hsl(var(--admin-text-secondary))", fontSize: "0.8125rem", marginTop: "2px" }}>
+            Pipeline comercial alimentado pela Vick
+          </p>
+        </div>
+
+        <button
+          onClick={fetchLeads}
+          disabled={isLoading}
+          className="inline-flex items-center gap-2 px-4 h-9 rounded-lg text-sm font-medium transition-all border"
+          style={{
+            background: "white",
+            borderColor: "hsl(var(--admin-border))",
+            color: "hsl(var(--admin-text-secondary))",
+          }}
+        >
+          <RefreshCw size={13} className={cn(isLoading && "animate-spin")} />
+          {isLoading ? "Sincronizando…" : "Atualizar"}
+        </button>
+      </div>
+
+      {/* Metric cards */}
+      <div className="flex gap-4 mb-6 flex-wrap">
+        <MetricCard label="Total de leads"    value={total}     sub="no pipeline"         Icon={Users}       />
+        <MetricCard label="Score quente"      value={hot}       sub="acima de 75%"        Icon={Zap}         accent="#EA580C" />
+        <MetricCard label="Urgentes"          value={urgent}    sub="precisam de ação"    Icon={AlertCircle} accent="#DC2626" />
+        <MetricCard label="Convertidos"       value={converted} sub="negócios fechados"   Icon={Star}        accent="#7C3AED" />
+      </div>
+
+      {/* Filters row */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-[220px] max-w-sm">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2"
+            style={{ color: "hsl(var(--admin-text-muted))" }}
+          />
+          <Input
+            placeholder="Nome, WhatsApp, segmento…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-9 bg-white text-sm"
+            style={{ borderColor: "hsl(var(--admin-border))" }}
+          />
+        </div>
+
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger
+            className="w-[200px] h-9 bg-white text-sm"
+            style={{ borderColor: "hsl(var(--admin-border))" }}
+          >
+            <Filter size={13} className="mr-2" style={{ color: "hsl(var(--admin-text-muted))" }} />
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Todos os status</SelectItem>
+            <SelectItem value="WAITING_HUMAN">Aguardando humano</SelectItem>
+            <SelectItem value="QUALIFIED">Qualificados</SelectItem>
+            <SelectItem value="ENGAGED">Engajados</SelectItem>
+            <SelectItem value="NEW">Novos</SelectItem>
+            <SelectItem value="CONVERTED">Convertidos</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div
+          className="text-xs ml-auto"
+          style={{ color: "hsl(var(--admin-text-muted))" }}
+        >
+          {filteredLeads.length} resultado{filteredLeads.length !== 1 ? "s" : ""}
         </div>
       </div>
 
+      {/* Table area */}
       {isLoading && leads.length === 0 ? (
-        <div className="h-[60vh] flex flex-col items-center justify-center bg-white rounded-3xl border border-zinc-200 shadow-sm">
-          <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-          <p className="text-zinc-500 font-medium">Carregando inteligência comercial...</p>
+        <div
+          className="admin-card flex flex-col items-center justify-center py-24"
+        >
+          <Loader2 size={32} className="animate-spin mb-3" style={{ color: "hsl(var(--admin-yellow))" }} />
+          <p style={{ color: "hsl(var(--admin-text-secondary))", fontSize: "0.875rem" }}>
+            Carregando leads…
+          </p>
         </div>
       ) : filteredLeads.length === 0 ? (
-        <div className="h-[60vh] flex flex-col items-center justify-center bg-white rounded-3xl border border-zinc-200 shadow-sm">
-          <div className="bg-zinc-50 p-6 rounded-full mb-4">
-            <Search className="h-10 w-10 text-zinc-300" />
+        <div
+          className="admin-card flex flex-col items-center justify-center py-24"
+        >
+          <div
+            className="flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+            style={{ background: "hsl(var(--admin-bg))" }}
+          >
+            <Search size={24} style={{ color: "hsl(var(--admin-text-muted))" }} />
           </div>
-          <h3 className="text-xl font-bold text-zinc-900">Nenhum lead encontrado</h3>
-          <p className="text-zinc-500">Tente ajustar seus filtros ou busca.</p>
+          <p
+            className="font-semibold mb-1"
+            style={{ color: "hsl(var(--admin-text-primary))" }}
+          >
+            Nenhum lead encontrado
+          </p>
+          <p style={{ color: "hsl(var(--admin-text-secondary))", fontSize: "0.8125rem" }}>
+            Ajuste os filtros ou aguarde novas interações
+          </p>
         </div>
       ) : (
-        <Card className="border-zinc-200 shadow-2xl overflow-hidden rounded-3xl bg-white">
+        <div className="admin-card overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-zinc-50/50">
-                <TableRow className="hover:bg-transparent border-b-zinc-100">
-                  <TableHead className="w-[300px] py-6 font-bold text-zinc-900">Lead / Identificação</TableHead>
-                  <TableHead className="font-bold text-zinc-900">Status & Qualificação</TableHead>
-                  <TableHead className="font-bold text-zinc-900">Segmento</TableHead>
-                  <TableHead className="font-bold text-zinc-900">Última Interação</TableHead>
-                  <TableHead className="text-right py-6 font-bold text-zinc-900">Ações</TableHead>
+              <TableHeader>
+                <TableRow
+                  className="hover:bg-transparent border-b"
+                  style={{ borderColor: "hsl(var(--admin-border))" }}
+                >
+                  {["Lead / Identificação", "Status & Score", "Segmento", "Última interação", ""].map((h) => (
+                    <TableHead
+                      key={h}
+                      className={cn(
+                        "py-3 text-xs font-semibold uppercase tracking-widest",
+                        h === "" && "text-right",
+                      )}
+                      style={{ color: "hsl(var(--admin-text-muted))", background: "hsl(var(--admin-bg))" }}
+                    >
+                      {h}
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
+
               <TableBody>
                 {filteredLeads.map((lead) => {
-                  const thermal = getThermalInfo(lead.qualificationScore);
+                  const th = getThermal(lead.qualificationScore);
                   return (
-                    <TableRow 
-                      key={lead.id} 
-                      className="group cursor-pointer hover:bg-zinc-50/50 transition-colors border-b-zinc-100"
+                    <TableRow
+                      key={lead.id}
+                      className="admin-row-hover cursor-pointer border-b"
+                      style={{ borderColor: "hsl(var(--admin-border))" }}
                       onClick={() => handleOpenDetail(lead.id)}
                     >
-                      <TableCell className="py-5">
-                        <div className="flex items-center gap-4 relative">
+                      {/* Identity */}
+                      <TableCell className="py-4">
+                        <div className="flex items-center gap-3 relative">
                           {!lead.isRead && (
-                            <div className="absolute -left-1 top-0 h-2 w-2 bg-primary rounded-full animate-pulse shadow-sm shadow-primary/50" />
+                            <span
+                              className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full animate-pulse"
+                              style={{ background: "hsl(var(--admin-yellow))" }}
+                            />
                           )}
-                          <div className={cn(
-                            "h-12 w-12 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-zinc-200 group-hover:scale-105 transition-transform",
-                            lead.priority === 'URGENT' ? "bg-red-600 animate-pulse" : "bg-zinc-900"
-                          )}>
-                            {(lead.name || 'L')[0].toUpperCase()}
+                          <div
+                            className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 select-none"
+                            style={{
+                              background:
+                                lead.priority === "URGENT"
+                                  ? "#DC2626"
+                                  : "hsl(var(--admin-sidebar-bg))",
+                              color: "#fff",
+                            }}
+                          >
+                            {(lead.name || "L")[0].toUpperCase()}
                           </div>
-                          <div className="flex flex-col gap-0.5">
+                          <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-zinc-900 text-base leading-none">
+                              <span
+                                className="font-semibold text-sm"
+                                style={{ color: "hsl(var(--admin-text-primary))" }}
+                              >
                                 {lead.name || "Lead Anônimo"}
                               </span>
-                              {getPriorityBadge(lead.priority)}
+                              <PriorityDot priority={lead.priority} />
                             </div>
-                            <span className="text-zinc-500 text-xs font-medium flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
+                            <span
+                              className="text-xs flex items-center gap-1"
+                              style={{ color: "hsl(var(--admin-text-muted))" }}
+                            >
+                              <Phone size={10} />
                               {lead.whatsapp || "Sem contato"}
                             </span>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-2">
-                          {getStatusBadge(lead.status)}
+
+                      {/* Status + score */}
+                      <TableCell className="py-4">
+                        <div className="flex flex-col gap-1.5">
+                          <StatusBadge status={lead.status} />
                           <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-24 bg-zinc-100 rounded-full overflow-hidden">
-                              <div 
-                                className={cn("h-full rounded-full transition-all duration-1000", thermal.bg)} 
-                                style={{ width: `${lead.qualificationScore}%` }}
+                            <div
+                              className="h-1 w-20 rounded-full overflow-hidden"
+                              style={{ background: "hsl(var(--admin-border))" }}
+                            >
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${lead.qualificationScore}%`,
+                                  background: th.bar,
+                                }}
                               />
                             </div>
-                            <span className={cn("text-[10px] font-black uppercase tracking-tighter", thermal.color)}>
-                              {thermal.label} ({lead.qualificationScore}%)
+                            <span
+                              className="text-[10px] font-bold uppercase tracking-wide"
+                              style={{ color: th.text }}
+                            >
+                              {th.label} {lead.qualificationScore}%
                             </span>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="h-4 w-4 text-zinc-400" />
-                          <span className="font-semibold text-zinc-700">{lead.segment || "Não identificado"}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-zinc-900">
-                            {format(new Date(lead.lastInteractionAt), "dd 'de' MMM", { locale: ptBR })}
-                          </span>
-                          <span className="text-xs text-zinc-400 font-medium">
-                            às {format(new Date(lead.lastInteractionAt), "HH:mm")}
+
+                      {/* Segment */}
+                      <TableCell className="py-4">
+                        <div className="flex items-center gap-1.5">
+                          <Briefcase size={13} style={{ color: "hsl(var(--admin-text-muted))" }} />
+                          <span
+                            className="text-sm font-medium"
+                            style={{ color: "hsl(var(--admin-text-secondary))" }}
+                          >
+                            {lead.segment || "—"}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right py-5">
-                        <Button variant="ghost" size="icon" className="rounded-xl hover:bg-white hover:shadow-md transition-all">
-                          <ExternalLink className="h-4 w-4 text-zinc-400" />
-                        </Button>
+
+                      {/* Date */}
+                      <TableCell className="py-4">
+                        <span
+                          className="text-sm font-medium"
+                          style={{ color: "hsl(var(--admin-text-primary))" }}
+                        >
+                          {format(new Date(lead.lastInteractionAt), "dd MMM", { locale: ptBR })}
+                        </span>
+                        <br />
+                        <span
+                          className="text-xs"
+                          style={{ color: "hsl(var(--admin-text-muted))" }}
+                        >
+                          {format(new Date(lead.lastInteractionAt), "HH:mm")}
+                        </span>
+                      </TableCell>
+
+                      {/* Action */}
+                      <TableCell className="py-4 text-right">
+                        <button
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-gray-100"
+                          style={{ color: "hsl(var(--admin-text-muted))" }}
+                          onClick={(e) => { e.stopPropagation(); handleOpenDetail(lead.id); }}
+                        >
+                          <ExternalLink size={14} />
+                        </button>
                       </TableCell>
                     </TableRow>
                   );
@@ -413,178 +535,262 @@ const AdminLeads = () => {
               </TableBody>
             </Table>
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* Modal de Detalhes do Lead */}
+      {/* ── Lead detail dialog ───────────────────────────────────────────────── */}
       <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
-        <DialogContent className="max-w-6xl h-[90vh] p-0 overflow-hidden border-none rounded-[32px] shadow-2xl flex flex-col" aria-describedby={undefined}>
-          {/* Títulos para screen readers — visualmente ocultos */}
+        <DialogContent
+          className="max-w-6xl h-[90vh] p-0 overflow-hidden border-none flex flex-col"
+          style={{ borderRadius: "20px", boxShadow: "0 25px 60px rgba(0,0,0,.18)" }}
+          aria-describedby={undefined}
+        >
           <DialogTitle className="sr-only">
-            Detalhes do Lead {selectedLead?.name || ''}
+            Detalhes do Lead {selectedLead?.name || ""}
           </DialogTitle>
           <DialogDescription className="sr-only">
             Informações completas, histórico de conversa e ações do lead selecionado.
           </DialogDescription>
+
           {selectedLead && (
             <>
-              {/* Header do Modal */}
-              <div className="bg-zinc-900 p-8 text-white relative">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-6">
-                    <div className="h-20 w-20 rounded-[24px] bg-white text-zinc-900 flex items-center justify-center text-3xl font-black shadow-2xl">
-                      {(selectedLead.name || 'L')[0].toUpperCase()}
+              {/* Modal header */}
+              <div
+                className="p-7 text-white shrink-0"
+                style={{ background: "hsl(var(--admin-sidebar-bg))" }}
+              >
+                <div className="flex items-start justify-between gap-6">
+                  <div className="flex items-center gap-5">
+                    <div
+                      className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black shrink-0"
+                      style={{ background: "hsl(var(--admin-yellow))", color: "#1C1C1E" }}
+                    >
+                      {(selectedLead.name || "L")[0].toUpperCase()}
                     </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-3">
-                        <h2 className="text-3xl font-black tracking-tight">{selectedLead.name || "Lead Anônimo"}</h2>
-                        {getStatusBadge(selectedLead.status)}
+                    <div>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <h2
+                          className="font-bold text-xl tracking-tight"
+                          style={{ color: "hsl(0 0% 95%)" }}
+                        >
+                          {selectedLead.name || "Lead Anônimo"}
+                        </h2>
+                        <StatusBadge status={selectedLead.status} />
                       </div>
-                      <div className="flex flex-wrap items-center gap-4 text-zinc-400 font-medium">
-                        <span className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer" onClick={() => copyToClipboard(selectedLead.whatsapp || '', 'WhatsApp')}>
-                          <Phone className="h-4 w-4" /> {selectedLead.whatsapp || 'N/A'}
-                        </span>
-                        <span className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer" onClick={() => copyToClipboard(selectedLead.email || '', 'E-mail')}>
-                          <Mail className="h-4 w-4" /> {selectedLead.email || 'N/A'}
-                        </span>
+                      <div
+                        className="flex flex-wrap items-center gap-4 mt-1.5 text-sm"
+                        style={{ color: "hsl(0 0% 55%)" }}
+                      >
+                        <button
+                          className="flex items-center gap-1.5 hover:text-white transition-colors"
+                          onClick={() => copyToClipboard(selectedLead.whatsapp || "", "WhatsApp")}
+                        >
+                          <Phone size={13} /> {selectedLead.whatsapp || "N/A"}
+                        </button>
+                        <button
+                          className="flex items-center gap-1.5 hover:text-white transition-colors"
+                          onClick={() => copyToClipboard(selectedLead.email || "", "E-mail")}
+                        >
+                          <Mail size={13} /> {selectedLead.email || "N/A"}
+                        </button>
                         <span className="flex items-center gap-1.5">
-                          <Briefcase className="h-4 w-4" /> {selectedLead.segment || 'Segmento não informado'}
+                          <Briefcase size={13} /> {selectedLead.segment || "Segmento não informado"}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end gap-3">
+                  <div className="flex flex-col items-end gap-3 shrink-0">
                     <div className="text-right">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Score de Conversão</p>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-5xl font-black leading-none">{selectedLead.qualificationScore}</span>
-                        <span className="text-xl font-bold text-zinc-500">/100</span>
+                      <p
+                        className="admin-label"
+                        style={{ color: "hsl(0 0% 40%)" }}
+                      >
+                        Score de conversão
+                      </p>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span
+                          className="font-black leading-none"
+                          style={{ fontSize: "2.5rem", color: "hsl(var(--admin-yellow))" }}
+                        >
+                          {selectedLead.qualificationScore}
+                        </span>
+                        <span style={{ color: "hsl(0 0% 45%)", fontWeight: 600 }}>/100</span>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="secondary" 
-                        className="bg-white/10 hover:bg-white/20 text-white border-none rounded-xl h-10 px-4"
-                        onClick={() => handleWhatsAppHandoff(selectedLead)}
-                      >
-                        <MessageCircle className="h-4 w-4 mr-2" />
-                        Assumir no WhatsApp
-                      </Button>
-                    </div>
+                    <button
+                      onClick={() => handleWhatsAppHandoff(selectedLead)}
+                      className="inline-flex items-center gap-2 px-4 h-9 rounded-lg text-sm font-semibold transition-colors"
+                      style={{
+                        background: "hsl(var(--admin-yellow))",
+                        color: "#1C1C1E",
+                      }}
+                    >
+                      <MessageCircle size={14} />
+                      Assumir no WhatsApp
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* Corpo do Modal */}
-              <div className="flex-1 overflow-hidden flex bg-zinc-50/50">
-                {/* Coluna Esquerda: Briefing & Ações */}
-                <div className="w-1/3 p-8 border-r border-zinc-200 overflow-y-auto space-y-8">
-                  {/* Briefing da Vik */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4" />
-                      Briefing by Vick
-                    </h3>
-                    <div className="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <FileText className="h-12 w-12" />
-                      </div>
-                      <p className="text-zinc-700 leading-relaxed font-medium italic relative z-10">
-                        "{selectedLead.summary?.summary || "Aguardando interação suficiente para gerar resumo estratégico..."}"
-                      </p>
+              {/* Modal body */}
+              <div
+                className="flex-1 overflow-hidden flex"
+                style={{ background: "hsl(var(--admin-bg))" }}
+              >
+                {/* Left column */}
+                <div
+                  className="w-[320px] shrink-0 flex flex-col gap-5 p-6 overflow-y-auto border-r"
+                  style={{ borderColor: "hsl(var(--admin-border))" }}
+                >
+                  {/* Briefing */}
+                  <section>
+                    <div className="admin-label mb-2 flex items-center gap-1.5">
+                      <TrendingUp size={11} /> Briefing by Vick
                     </div>
-                  </div>
+                    <div
+                      className="admin-card p-4 text-sm leading-relaxed italic"
+                      style={{ color: "hsl(var(--admin-text-secondary))" }}
+                    >
+                      "{selectedLead.summary?.summary || "Aguardando interação suficiente para gerar resumo…"}"
+                    </div>
+                  </section>
 
-                  {/* Observações Internas */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      Notas do Time
-                    </h3>
-                    <div className="space-y-3">
-                      <Textarea 
-                        placeholder="Adicione observações estratégicas sobre este lead..." 
-                        className="min-h-[120px] bg-white border-zinc-200 rounded-2xl resize-none focus:ring-primary/20 shadow-sm"
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                      />
-                      <Button 
-                        className="w-full h-11 rounded-xl shadow-lg shadow-primary/10 transition-all active:scale-95"
-                        onClick={handleSaveNotes}
-                        disabled={isUpdating}
-                      >
-                        {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar Observações"}
-                      </Button>
+                  {/* Notes */}
+                  <section>
+                    <div className="admin-label mb-2 flex items-center gap-1.5">
+                      <FileText size={11} /> Notas do time
                     </div>
-                  </div>
+                    <Textarea
+                      placeholder="Observações estratégicas…"
+                      className="min-h-[100px] text-sm resize-none bg-white"
+                      style={{ borderColor: "hsl(var(--admin-border))" }}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                    <button
+                      onClick={handleSaveNotes}
+                      disabled={isUpdating}
+                      className="mt-2 w-full h-9 rounded-lg text-sm font-semibold transition-colors inline-flex items-center justify-center"
+                      style={{
+                        background: "hsl(var(--admin-yellow))",
+                        color: "#1C1C1E",
+                        opacity: isUpdating ? 0.6 : 1,
+                      }}
+                    >
+                      {isUpdating ? <Loader2 size={14} className="animate-spin" /> : "Salvar notas"}
+                    </button>
+                  </section>
 
-                  {/* Alterar Status */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                      <Filter className="h-4 w-4" />
-                      Fluxo de Atendimento
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {['NEW', 'ENGAGED', 'QUALIFIED', 'WAITING_HUMAN', 'CONVERTED', 'LOST'].map((s) => (
-                        <Button
-                          key={s}
-                          variant={selectedLead.status === s ? "default" : "outline"}
-                          size="sm"
-                          className={cn(
-                            "h-10 rounded-xl font-bold text-[11px]",
-                            selectedLead.status === s && "shadow-lg shadow-primary/20"
-                          )}
-                          onClick={() => handleUpdateStatus(selectedLead.id, s)}
-                          disabled={isUpdating}
-                        >
-                          {s}
-                        </Button>
-                      ))}
+                  {/* Status flow */}
+                  <section>
+                    <div className="admin-label mb-2 flex items-center gap-1.5">
+                      <Filter size={11} /> Fluxo de atendimento
                     </div>
-                  </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {["NEW", "ENGAGED", "QUALIFIED", "WAITING_HUMAN", "CONVERTED", "LOST"].map((s) => {
+                        const cfg   = STATUS_CONFIG[s] ?? STATUS_CONFIG.NEW;
+                        const active = selectedLead.status === s;
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => handleUpdateStatus(selectedLead.id, s)}
+                            disabled={isUpdating}
+                            className="h-8 rounded-lg text-xs font-semibold transition-all border"
+                            style={{
+                              background: active ? cfg.bg : "white",
+                              color: active ? cfg.text : "hsl(var(--admin-text-secondary))",
+                              borderColor: active ? cfg.text + "40" : "hsl(var(--admin-border))",
+                              fontWeight: active ? 700 : 500,
+                            }}
+                          >
+                            {cfg.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
                 </div>
 
-                {/* Coluna Direita: Timeline de Chat */}
+                {/* Right column — chat transcript */}
                 <div className="flex-1 flex flex-col bg-white">
-                  <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4" />
-                      Histórico da Conversa
-                    </h3>
-                    <Badge variant="outline" className="rounded-lg text-[10px] font-bold">
-                      {selectedLead.session?.messages.length || 0} Mensagens
-                    </Badge>
+                  <div
+                    className="px-6 py-4 border-b flex items-center justify-between shrink-0"
+                    style={{ borderColor: "hsl(var(--admin-border))" }}
+                  >
+                    <div className="admin-label flex items-center gap-1.5">
+                      <MessageSquare size={11} /> Histórico da conversa
+                    </div>
+                    <span
+                      className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                      style={{
+                        background: "hsl(var(--admin-bg))",
+                        color: "hsl(var(--admin-text-secondary))",
+                      }}
+                    >
+                      {selectedLead.session?.messages.length || 0} mensagens
+                    </span>
                   </div>
-                  
-                  <div className="flex-1 overflow-y-auto p-8 space-y-6">
+
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
                     {selectedLead.session?.messages.map((msg, idx) => (
-                      <div 
-                        key={msg.id} 
+                      <div
+                        key={msg.id}
                         className={cn(
-                          "flex flex-col max-w-[85%] group animate-in fade-in slide-in-from-bottom-2 duration-300",
-                          msg.role === 'user' ? "ml-auto items-end" : "items-start"
+                          "flex flex-col max-w-[80%]",
+                          msg.role === "user" ? "ml-auto items-end" : "items-start",
                         )}
-                        style={{ animationDelay: `${idx * 50}ms` }}
+                        style={{ animationDelay: `${idx * 30}ms` }}
                       >
-                        <div className={cn(
-                          "px-6 py-4 rounded-[28px] shadow-sm text-sm leading-relaxed",
-                          msg.role === 'user' 
-                            ? "bg-zinc-900 text-white rounded-tr-none" 
-                            : "bg-zinc-50 border border-zinc-100 text-zinc-800 rounded-tl-none"
-                        )}>
-                          <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
+                        <div
+                          className="px-4 py-3 rounded-2xl text-sm leading-relaxed"
+                          style={
+                            msg.role === "user"
+                              ? {
+                                  background: "hsl(var(--admin-sidebar-bg))",
+                                  color: "hsl(0 0% 92%)",
+                                  borderRadius: "18px 18px 4px 18px",
+                                }
+                              : {
+                                  background: "hsl(var(--admin-bg))",
+                                  color: "hsl(var(--admin-text-primary))",
+                                  border: "1px solid hsl(var(--admin-border))",
+                                  borderRadius: "18px 18px 18px 4px",
+                                }
+                          }
+                        >
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
                         </div>
-                        <span className="text-[10px] font-bold text-zinc-400 mt-2 px-2 uppercase tracking-tighter">
-                          {msg.role === 'user' ? 'Cliente' : 'Vick'} • {format(new Date(msg.createdAt), "HH:mm")}
+                        <span
+                          className="text-[10px] mt-1 px-1 uppercase tracking-wide font-semibold"
+                          style={{ color: "hsl(var(--admin-text-muted))" }}
+                        >
+                          {msg.role === "user" ? "Cliente" : "Vick"} •{" "}
+                          {format(new Date(msg.createdAt), "HH:mm")}
                         </span>
                       </div>
                     ))}
-                    {(!selectedLead.session?.messages || selectedLead.session.messages.length === 0) && (
-                      <div className="h-full flex flex-col items-center justify-center text-zinc-400 space-y-4">
-                        <MessageSquare className="h-12 w-12 opacity-20" />
-                        <p className="font-medium">Nenhum histórico disponível.</p>
+
+                    {(!selectedLead.session?.messages ||
+                      selectedLead.session.messages.length === 0) && (
+                      <div
+                        className="flex flex-col items-center justify-center py-20 gap-3"
+                      >
+                        <div
+                          className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                          style={{ background: "hsl(var(--admin-bg))" }}
+                        >
+                          <MessageSquare
+                            size={20}
+                            style={{ color: "hsl(var(--admin-text-muted))" }}
+                          />
+                        </div>
+                        <p
+                          className="text-sm"
+                          style={{ color: "hsl(var(--admin-text-secondary))" }}
+                        >
+                          Nenhum histórico disponível.
+                        </p>
                       </div>
                     )}
                   </div>

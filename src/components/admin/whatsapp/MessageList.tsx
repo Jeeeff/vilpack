@@ -1,22 +1,16 @@
 /**
  * MessageList — lista de mensagens de uma conversa.
- * Balões estilo WhatsApp Web: inbound (esquerda), outbound (direita).
+ * Visual integrado ao design system CRM premium Vilpack.
  *
- * Comportamento de scroll:
- *   - Ao carregar uma nova conversa: scroll imediato para o fim
- *   - Ao receber nova mensagem em tempo real: scroll suave para o fim
- *   - Ao carregar mensagens mais antigas (cursor): preserva posição de scroll
- *
- * Paginação cursor-based:
- *   - Botão "Carregar mensagens anteriores" no topo, visível quando hasMore=true
- *   - Ao clicar, o pai é notificado via onLoadMore(cursor)
+ * Scroll behavior:
+ *   - Nova conversa: scroll instantâneo para o fim
+ *   - Nova mensagem em tempo real: scroll suave para o fim
+ *   - Carregar mais antigas: preserva posição de scroll
  */
-import { useEffect, useRef, useLayoutEffect } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Check, CheckCheck, ChevronUp, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 export interface MessageItem {
   id:        string;
@@ -29,18 +23,20 @@ export interface MessageItem {
 }
 
 interface Props {
-  messages:       MessageItem[];
-  loading?:       boolean;
-  loadingMore?:   boolean;
-  hasMore?:       boolean;
-  nextCursor?:    string | null;
-  onLoadMore?:    (cursor: string) => void;
+  messages:     MessageItem[];
+  loading?:     boolean;
+  loadingMore?: boolean;
+  hasMore?:     boolean;
+  nextCursor?:  string | null;
+  onLoadMore?:  (cursor: string) => void;
 }
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === 'read')      return <CheckCheck className="h-3.5 w-3.5 text-blue-400" />;
-  if (status === 'delivered') return <CheckCheck className="h-3.5 w-3.5 text-muted-foreground" />;
-  return <Check className="h-3.5 w-3.5 text-muted-foreground" />;
+  if (status === 'read')
+    return <CheckCheck size={13} style={{ color: '#60A5FA' }} />;
+  if (status === 'delivered')
+    return <CheckCheck size={13} style={{ color: 'hsl(var(--admin-text-muted))' }} />;
+  return <Check size={13} style={{ color: 'hsl(var(--admin-text-muted))' }} />;
 }
 
 export function MessageList({
@@ -56,27 +52,19 @@ export function MessageList({
   const prevLenRef    = useRef(0);
   const prevScrollRef = useRef<{ height: number; top: number } | null>(null);
 
-  // Ao carregar nova conversa (messages substituído inteiramente): scroll para o fim
-  // Ao receber nova mensagem (+1 no final): scroll suave para o fim
-  // Ao carregar mensagens anteriores (+N no início): restaura posição
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
     const prevLen = prevLenRef.current;
     const currLen = messages.length;
 
     if (prevLen === 0 && currLen > 0) {
-      // Primeira carga: scroll instantâneo ao fim
       container.scrollTop = container.scrollHeight;
     } else if (prevScrollRef.current && currLen > prevLen) {
-      // Após "carregar mais": restaura posição de scroll relativa
       const { height, top } = prevScrollRef.current;
-      const newHeight = container.scrollHeight;
-      container.scrollTop = top + (newHeight - height);
+      container.scrollTop = top + (container.scrollHeight - height);
       prevScrollRef.current = null;
     } else if (currLen > prevLen) {
-      // Nova mensagem em tempo real: scroll suave para o fim
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -97,8 +85,11 @@ export function MessageList({
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+      <div
+        className="flex-1 flex items-center justify-center gap-2 text-sm"
+        style={{ background: 'hsl(var(--admin-bg))', color: 'hsl(var(--admin-text-muted))' }}
+      >
+        <Loader2 size={14} className="animate-spin" />
         Carregando mensagens…
       </div>
     );
@@ -106,7 +97,10 @@ export function MessageList({
 
   if (!messages.length) {
     return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+      <div
+        className="flex-1 flex items-center justify-center text-sm"
+        style={{ background: 'hsl(var(--admin-bg))', color: 'hsl(var(--admin-text-muted))' }}
+      >
         Nenhuma mensagem ainda
       </div>
     );
@@ -115,25 +109,29 @@ export function MessageList({
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-[#eae6df]"
+      className="flex-1 overflow-y-auto px-4 py-4 space-y-2"
+      style={{ background: 'hsl(40 20% 96%)' }}
     >
-      {/* Botão de paginação — topo */}
+      {/* Load more button */}
       {hasMore && (
         <div className="flex justify-center pb-2">
-          <Button
-            variant="outline"
-            size="sm"
+          <button
             onClick={handleLoadMore}
             disabled={loadingMore}
-            className="text-xs bg-white/80 hover:bg-white"
+            className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full text-xs font-medium transition-colors border"
+            style={{
+              background: 'white',
+              borderColor: 'hsl(var(--admin-border))',
+              color: 'hsl(var(--admin-text-secondary))',
+            }}
           >
             {loadingMore ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+              <Loader2 size={11} className="animate-spin" />
             ) : (
-              <ChevronUp className="h-3.5 w-3.5 mr-1" />
+              <ChevronUp size={11} />
             )}
             Carregar mensagens anteriores
-          </Button>
+          </button>
         </div>
       )}
 
@@ -145,22 +143,33 @@ export function MessageList({
         return (
           <div
             key={msg.id}
-            className={cn('flex', isOut ? 'justify-end' : 'justify-start')}
+            className="flex"
+            style={{ justifyContent: isOut ? 'flex-end' : 'flex-start' }}
           >
             <div
-              className={cn(
-                'max-w-[70%] px-3 py-2 rounded-lg shadow-sm text-sm relative',
+              className="max-w-[72%] px-3 py-2 text-sm shadow-sm"
+              style={
                 isOut
-                  ? 'bg-[#dcf8c6] text-gray-900 rounded-br-none'
-                  : 'bg-white text-gray-900 rounded-bl-none',
-              )}
+                  ? {
+                      background: '#DCF8C6',
+                      color: '#1C1C1E',
+                      borderRadius: '14px 14px 4px 14px',
+                    }
+                  : {
+                      background: 'white',
+                      color: '#1C1C1E',
+                      borderRadius: '14px 14px 14px 4px',
+                    }
+              }
             >
-              <p className="whitespace-pre-wrap break-words leading-snug">{body}</p>
-              <div className={cn(
-                'flex items-center gap-1 mt-1',
-                isOut ? 'justify-end' : 'justify-start',
-              )}>
-                <span className="text-[10px] text-muted-foreground">{time}</span>
+              <p className="whitespace-pre-wrap break-words leading-snug text-sm">{body}</p>
+              <div
+                className="flex items-center gap-1 mt-1"
+                style={{ justifyContent: isOut ? 'flex-end' : 'flex-start' }}
+              >
+                <span style={{ fontSize: '10px', color: 'hsl(var(--admin-text-muted))' }}>
+                  {time}
+                </span>
                 {isOut && <StatusIcon status={msg.status} />}
               </div>
             </div>

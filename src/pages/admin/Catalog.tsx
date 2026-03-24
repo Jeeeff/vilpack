@@ -213,14 +213,14 @@ const AdminCatalog = () => {
   const isPartiallySelected = selectedProducts.size > 0 && selectedProducts.size < filtered.length;
 
   return (
-    <div className="space-y-8">
+    <div className="admin-page-bg min-h-full p-6 md:p-8 space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Catálogo de Produtos</h2>
-        <p className="text-zinc-500 mt-1">Importe produtos via CSV e gerencie imagens do catálogo.</p>
+        <h2 className="text-2xl font-bold text-[hsl(var(--admin-text-primary))]">Catálogo de Produtos</h2>
+        <p className="text-sm text-[hsl(var(--admin-text-secondary))] mt-1">Importe produtos via CSV e gerencie imagens do catálogo.</p>
       </div>
 
       {/* Import CSV Card */}
-      <Card className="border-dashed border-2 border-zinc-200">
+      <Card className="border-dashed border-2 border-[hsl(var(--admin-border))] admin-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <FileText className="h-5 w-5 text-primary" />
@@ -238,10 +238,10 @@ const AdminCatalog = () => {
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
             <label className="flex-1 cursor-pointer">
               <div className={`flex items-center gap-3 border-2 rounded-xl px-4 py-3 transition-colors ${
-                csvFile ? 'border-primary bg-primary/5' : 'border-zinc-200 hover:border-zinc-300 bg-zinc-50'
+                csvFile ? 'border-[hsl(var(--admin-yellow))] bg-[hsl(var(--admin-yellow-soft))]' : 'border-[hsl(var(--admin-border))] hover:border-[hsl(var(--admin-yellow))] bg-[hsl(var(--admin-surface-raised))]'
               }`}>
                 <Upload className="h-5 w-5 text-zinc-400 shrink-0" />
-                <span className="text-sm text-zinc-600 truncate">
+                <span className="text-sm text-[hsl(var(--admin-text-secondary))] truncate">
                   {csvFile ? csvFile.name : 'Clique para selecionar o arquivo .csv'}
                 </span>
               </div>
@@ -267,8 +267,8 @@ const AdminCatalog = () => {
           </div>
 
           {importResult && (
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-2">
-              <p className="font-semibold text-zinc-800">{importResult.message}</p>
+            <div className="rounded-xl border border-[hsl(var(--admin-border))] bg-white p-4 space-y-2">
+              <p className="font-semibold text-[hsl(var(--admin-text-primary))]">{importResult.message}</p>
               <div className="flex gap-4 text-sm">
                 <span className="flex items-center gap-1 text-green-600">
                   <CheckCircle2 className="h-4 w-4" /> {importResult.created} criados
@@ -293,7 +293,7 @@ const AdminCatalog = () => {
       </Card>
 
       {/* Product Table */}
-      <Card>
+      <Card className="admin-card">
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
@@ -301,8 +301,8 @@ const AdminCatalog = () => {
               Produtos Cadastrados
               <Badge variant="secondary" className="ml-2">{products.length}</Badge>
             </CardTitle>
-            {selectedProducts.size > 0 && (
-              <p className="text-sm text-zinc-500 mt-2">
+              {selectedProducts.size > 0 && (
+              <p className="text-sm text-[hsl(var(--admin-text-muted))] mt-2">
                 {selectedProducts.size} produto(s) selecionado(s)
               </p>
             )}
@@ -354,7 +354,7 @@ const AdminCatalog = () => {
         </CardHeader>
         <CardContent>
           {filtered.length === 0 ? (
-            <div className="text-center py-12 text-zinc-400">
+            <div className="text-center py-12 text-[hsl(var(--admin-text-muted))]">
               <Package className="h-10 w-10 mx-auto mb-2 opacity-30" />
               <p>{products.length === 0 ? 'Nenhum produto cadastrado. Importe um CSV para começar.' : 'Nenhum produto encontrado.'}</p>
             </div>
@@ -381,7 +381,7 @@ const AdminCatalog = () => {
               </TableHeader>
               <TableBody>
                 {filtered.map((product) => (
-                  <TableRow key={product.id} className={selectedProducts.has(product.id) ? 'bg-blue-50' : ''}>
+                   <TableRow key={product.id} className={selectedProducts.has(product.id) ? 'bg-[hsl(var(--admin-yellow-soft))]' : ''}>
                     <TableCell>
                       <Checkbox
                         checked={selectedProducts.has(product.id)}
@@ -394,19 +394,19 @@ const AdminCatalog = () => {
                         <img
                           src={getImageSrc(product.imageUrl)!}
                           alt={product.name}
-                          className="w-12 h-12 object-cover rounded-lg border border-zinc-200"
+                          className="w-12 h-12 object-cover rounded-lg border border-[hsl(var(--admin-border))]"
                         />
                       ) : (
-                        <div className="w-12 h-12 bg-zinc-100 rounded-lg border border-zinc-200 flex items-center justify-center">
-                          <ImagePlus className="h-5 w-5 text-zinc-300" />
+                          <div className="w-12 h-12 bg-[hsl(var(--admin-surface-raised))] rounded-lg border border-[hsl(var(--admin-border))] flex items-center justify-center">
+                            <ImagePlus className="h-5 w-5 text-[hsl(var(--admin-text-muted))]" />
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium text-zinc-900">{product.name}</p>
-                        {product.description && (
-                          <p className="text-xs text-zinc-400 mt-0.5 max-w-xs truncate">{product.description}</p>
+                        <p className="font-medium text-[hsl(var(--admin-text-primary))]">{product.name}</p>
+                         {product.description && (
+                           <p className="text-xs text-[hsl(var(--admin-text-muted))] mt-0.5 max-w-xs truncate">{product.description}</p>
                         )}
                       </div>
                     </TableCell>
@@ -416,16 +416,16 @@ const AdminCatalog = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={product.active ? 'bg-green-100 text-green-700 border-green-200' : 'bg-zinc-100 text-zinc-500'}>
+                       <Badge className={product.active ? 'bg-[hsl(var(--admin-green-soft))] text-[hsl(var(--admin-green))] border-[hsl(142_60%_82%)]' : 'bg-[hsl(var(--admin-surface-raised))] text-[hsl(var(--admin-text-muted))] border-[hsl(var(--admin-border))]'}>
                         {product.active ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <label className="cursor-pointer">
                         <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
-                          uploading === product.id
-                            ? 'border-zinc-200 bg-zinc-50 text-zinc-400'
-                            : 'border-zinc-200 hover:border-primary hover:bg-primary/5 hover:text-primary text-zinc-600'
+                           uploading === product.id
+                             ? 'border-[hsl(var(--admin-border))] bg-[hsl(var(--admin-surface-raised))] text-[hsl(var(--admin-text-muted))]'
+                             : 'border-[hsl(var(--admin-border))] hover:border-[hsl(var(--admin-yellow))] hover:bg-[hsl(var(--admin-yellow-soft))] hover:text-[hsl(42_80%_38%)] text-[hsl(var(--admin-text-secondary))]'
                         }`}>
                           {uploading === product.id ? (
                             <><Loader2 className="h-4 w-4 animate-spin" />Enviando...</>
@@ -451,7 +451,7 @@ const AdminCatalog = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-zinc-400 hover:text-red-500 hover:bg-red-50"
+                            className="text-[hsl(var(--admin-text-muted))] hover:text-red-500 hover:bg-red-50"
                             disabled={deleting === product.id}
                           >
                             {deleting === product.id

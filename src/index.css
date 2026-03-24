@@ -28,8 +28,8 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 0 0% 85%;
-    --input: 0 0% 85%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
     --ring: 42 97% 53%;
 
     --radius: 0.5rem;
@@ -37,6 +37,27 @@
     --vilpack-yellow: 42 97% 53%;
     --vilpack-dark: 0 0% 17%;
     --vilpack-green: 142 60% 40%;
+
+    /* ── Admin CRM design tokens ── */
+    --admin-sidebar-bg:        11 11% 12%;   /* #1E1E1E grafite escuro */
+    --admin-sidebar-fg:        0 0% 70%;     /* texto muted na sidebar */
+    --admin-sidebar-fg-active: 42 97% 53%;   /* amarelo Vilpack para item ativo */
+    --admin-sidebar-border:    0 0% 20%;     /* separador sutil */
+    --admin-sidebar-hover:     0 0% 18%;     /* hover de item */
+    --admin-bg:                40 14% 96%;   /* #F5F4F0 off-white quente */
+    --admin-surface:           0 0% 100%;    /* branco para cards */
+    --admin-surface-raised:    40 10% 98%;   /* superfície levemente elevada */
+    --admin-border:            40 8% 90%;    /* borda suave em cards */
+    --admin-text-primary:      0 0% 13%;     /* #212121 */
+    --admin-text-secondary:    0 0% 42%;     /* #6B6B6B */
+    --admin-text-muted:        0 0% 62%;     /* #9E9E9E */
+    --admin-yellow:            42 97% 53%;   /* #F5C518 */
+    --admin-yellow-soft:       42 97% 96%;   /* fundo suave amarelo */
+    --admin-green:             142 60% 40%;  /* verde confirmação */
+    --admin-green-soft:        142 50% 95%;  /* fundo suave verde */
+    --admin-red-soft:          0 84% 96%;    /* fundo suave vermelho */
+    --admin-blue-soft:         210 80% 96%;  /* fundo suave azul */
+    --admin-orange-soft:       28 90% 95%;   /* fundo suave laranja */
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -90,8 +111,91 @@
   }
 }
 
+/* ── Admin CRM utility classes ────────────────────────────────── */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Sidebar */
+  .admin-sidebar {
+    background-color: hsl(var(--admin-sidebar-bg));
+  }
+
+  /* Admin page background */
+  .admin-page-bg {
+    background-color: hsl(var(--admin-bg));
+  }
+
+  /* Card surface */
+  .admin-card {
+    background-color: hsl(var(--admin-surface));
+    border: 1px solid hsl(var(--admin-border));
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0,0,0,.06), 0 1px 2px -1px rgba(0,0,0,.04);
+  }
+
+  /* Section label (ALL CAPS small) */
+  .admin-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: hsl(var(--admin-text-muted));
+  }
+
+  /* Metric card number */
+  .admin-metric-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+    color: hsl(var(--admin-text-primary));
+    letter-spacing: -0.02em;
+  }
+
+  /* Hover transition for interactive rows */
+  .admin-row-hover {
+    transition: background-color 150ms ease;
+  }
+  .admin-row-hover:hover {
+    background-color: hsl(var(--admin-surface-raised));
+  }
+
+  /* Sidebar nav item */
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: hsl(var(--admin-sidebar-fg));
+    transition: background-color 150ms ease, color 150ms ease;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .sidebar-item:hover {
+    background-color: hsl(var(--admin-sidebar-hover));
+    color: hsl(0 0% 90%);
+  }
+  .sidebar-item.active {
+    background-color: hsl(42 97% 53% / 0.15);
+    color: hsl(var(--admin-sidebar-fg-active));
+  }
+  .sidebar-item.active svg {
+    color: hsl(var(--admin-sidebar-fg-active));
+  }
+
+  /* Section group label in sidebar */
+  .sidebar-group-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: hsl(0 0% 38%);
+    padding: 0 0.75rem;
+    margin-top: 1.25rem;
+    margin-bottom: 0.25rem;
   }
 }

@@ -1,9 +1,8 @@
 /**
- * ChatHeader — cabeçalho da área de chat com info do contato e ações.
+ * ChatHeader — cabeçalho da área de chat.
+ * Visual integrado ao design system CRM premium Vilpack.
  */
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { UserCheck, Bot, BotOff } from 'lucide-react';
+import { UserCheck, Bot, BotOff, Phone } from 'lucide-react';
 
 interface Props {
   contactName:  string;
@@ -14,6 +13,12 @@ interface Props {
   onRelease?:   () => void;
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  open:     'Aberta',
+  resolved: 'Resolvida',
+  pending:  'Pendente',
+};
+
 export function ChatHeader({
   contactName,
   contactPhone,
@@ -22,49 +27,96 @@ export function ChatHeader({
   onTakeOver,
   onRelease,
 }: Props) {
-  const statusVariant =
-    status === 'open'     ? 'default'     :
-    status === 'resolved' ? 'secondary'   :
-    status === 'pending'  ? 'outline'     : 'secondary';
-
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b bg-white">
-      {/* Info do contato */}
+    <div
+      className="flex items-center justify-between px-4 py-3 border-b shrink-0 bg-white"
+      style={{ borderColor: 'hsl(var(--admin-border))' }}
+    >
+      {/* Contact info */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-sm">
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 select-none"
+          style={{ background: 'hsl(var(--admin-sidebar-bg))', color: '#fff' }}
+        >
           {contactName.charAt(0).toUpperCase()}
         </div>
         <div>
-          <p className="font-semibold text-sm">{contactName}</p>
-          <p className="text-xs text-muted-foreground">{contactPhone}</p>
+          <p
+            className="font-semibold text-sm leading-tight"
+            style={{ color: 'hsl(var(--admin-text-primary))' }}
+          >
+            {contactName}
+          </p>
+          <p
+            className="text-xs flex items-center gap-1"
+            style={{ color: 'hsl(var(--admin-text-muted))' }}
+          >
+            <Phone size={10} />
+            {contactPhone}
+          </p>
         </div>
-        <Badge variant={statusVariant} className="ml-2 text-xs">
-          {status}
-        </Badge>
+
+        {/* Status badge */}
+        <span
+          className="text-xs font-semibold px-2 py-0.5 rounded-full border"
+          style={{
+            borderColor: 'hsl(var(--admin-border))',
+            color: 'hsl(var(--admin-text-secondary))',
+            background: 'hsl(var(--admin-bg))',
+          }}
+        >
+          {STATUS_LABEL[status] ?? status}
+        </span>
+
+        {/* Human takeover badge */}
         {botPaused && (
-          <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+          <span
+            className="text-xs font-semibold px-2 py-0.5 rounded-full"
+            style={{
+              background: 'hsl(var(--admin-yellow-soft))',
+              color: '#B45309',
+              border: '1px solid #FDE68A',
+            }}
+          >
             Atendimento humano
-          </Badge>
+          </span>
         )}
       </div>
 
-      {/* Ações */}
+      {/* Actions */}
       <div className="flex items-center gap-2">
         {botPaused ? (
-          <Button size="sm" variant="outline" onClick={onRelease}>
-            <Bot className="mr-1 h-4 w-4" />
+          <button
+            onClick={onRelease}
+            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold transition-colors border"
+            style={{
+              borderColor: 'hsl(var(--admin-border))',
+              color: 'hsl(var(--admin-text-secondary))',
+              background: 'white',
+            }}
+          >
+            <Bot size={13} />
             Devolver ao bot
-          </Button>
+          </button>
         ) : (
-          <Button size="sm" variant="outline" onClick={onTakeOver}>
-            <UserCheck className="mr-1 h-4 w-4" />
+          <button
+            onClick={onTakeOver}
+            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold transition-colors"
+            style={{
+              background: 'hsl(var(--admin-yellow))',
+              color: '#1C1C1E',
+            }}
+          >
+            <UserCheck size={13} />
             Assumir atendimento
-          </Button>
+          </button>
         )}
+
+        {/* Bot state indicator */}
         {botPaused ? (
-          <BotOff className="h-4 w-4 text-amber-500" />
+          <BotOff size={16} style={{ color: '#B45309' }} />
         ) : (
-          <Bot className="h-4 w-4 text-green-500" />
+          <Bot size={16} style={{ color: 'hsl(var(--admin-green))' }} />
         )}
       </div>
     </div>
