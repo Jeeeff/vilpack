@@ -51,15 +51,13 @@ export default function Configuracoes() {
       <div className="max-w-2xl mx-auto space-y-5">
 
         {/* Page header */}
-        <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-xl bg-[hsl(var(--admin-yellow-soft))] flex items-center justify-center shrink-0">
-            <Settings className="h-5 w-5 text-[hsl(42_80%_38%)]" />
+        <div className="admin-page-header">
+          <div className="admin-page-header-icon">
+            <Settings className="h-5 w-5" style={{ color: 'hsl(42 80% 38%)' }} />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-[hsl(var(--admin-text-primary))]">Configurações</h2>
-            <p className="text-sm text-[hsl(var(--admin-text-secondary))] mt-0.5">
-              Preferências gerais do CRM Vilpack.
-            </p>
+            <h2 className="admin-page-header-title">Configurações</h2>
+            <p className="admin-page-header-sub">Preferências gerais do CRM Vilpack.</p>
           </div>
         </div>
 
@@ -77,9 +75,7 @@ export default function Configuracoes() {
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-[hsl(var(--admin-text-primary))]">{title}</p>
                   {tag && (
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--admin-text-muted))] bg-[hsl(var(--admin-bg))] border border-[hsl(var(--admin-border))] rounded-md px-1.5 py-0.5">
-                      {tag}
-                    </span>
+                    <span className="admin-badge-muted">{tag}</span>
                   )}
                 </div>
                 <p className="text-xs text-[hsl(var(--admin-text-secondary))] mt-0.5">{description}</p>
@@ -91,7 +87,7 @@ export default function Configuracoes() {
 
         {/* System info */}
         <div>
-          <p className="admin-label mb-3 px-1">Informações do sistema</p>
+          <p className="admin-section-label mb-3 px-1">Informações do sistema</p>
           <div className="admin-card rounded-2xl overflow-hidden divide-y divide-[hsl(var(--admin-border))]">
             {INFO_ROWS.map(({ label, value }) => (
               <div key={label} className="flex items-center justify-between px-5 py-3">

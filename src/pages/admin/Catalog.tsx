@@ -3,7 +3,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { API_URL } from "@/config/api";
@@ -225,22 +224,21 @@ const AdminCatalog = () => {
       </div>
 
       {/* Import CSV Card */}
-      <Card className="border-dashed border-2 border-[hsl(var(--admin-border))] admin-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+      <div className="admin-card border-dashed border-2 p-6 space-y-4">
+        <div>
+          <h3 className="flex items-center gap-2 text-base font-semibold text-[hsl(var(--admin-text-primary))]">
             <FileText className="h-5 w-5 text-primary" />
             Importar Produtos via CSV
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-sm text-[hsl(var(--admin-text-secondary))] mt-1">
             O arquivo deve ter as colunas:{' '}
             <code className="bg-zinc-100 px-1 rounded text-xs font-mono">nome</code>,{' '}
             <code className="bg-zinc-100 px-1 rounded text-xs font-mono">tipo</code> (categoria) e opcionalmente{' '}
             <code className="bg-zinc-100 px-1 rounded text-xs font-mono">descricao</code>.
             Separador: vírgula ou ponto-e-vírgula. Produtos existentes serão atualizados.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
             <label className="flex-1 cursor-pointer">
               <div className={`flex items-center gap-3 border-2 rounded-xl px-4 py-3 transition-colors ${
                 csvFile ? 'border-[hsl(var(--admin-yellow))] bg-[hsl(var(--admin-yellow-soft))]' : 'border-[hsl(var(--admin-border))] hover:border-[hsl(var(--admin-yellow))] bg-[hsl(var(--admin-surface-raised))]'
@@ -294,18 +292,17 @@ const AdminCatalog = () => {
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Product Table */}
-      <Card className="admin-card">
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="admin-card overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 py-4 border-b" style={{ borderColor: 'hsl(var(--admin-border))' }}>
           <div className="flex-1">
-            <CardTitle className="flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-base font-semibold text-[hsl(var(--admin-text-primary))]">
               <Package className="h-5 w-5" />
               Produtos Cadastrados
               <Badge variant="secondary" className="ml-2">{products.length}</Badge>
-            </CardTitle>
+            </h3>
               {selectedProducts.size > 0 && (
               <p className="text-sm text-[hsl(var(--admin-text-muted))] mt-2">
                 {selectedProducts.size} produto(s) selecionado(s)
@@ -356,18 +353,25 @@ const AdminCatalog = () => {
               </AlertDialog>
             )}
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-0">
           {filtered.length === 0 ? (
-            <div className="text-center py-12 text-[hsl(var(--admin-text-muted))]">
-              <Package className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              <p>{products.length === 0 ? 'Nenhum produto cadastrado. Importe um CSV para começar.' : 'Nenhum produto encontrado.'}</p>
+            <div className="admin-empty-state">
+              <div className="admin-empty-state-icon">
+                <Package className="h-6 w-6" />
+              </div>
+              <p className="admin-empty-state-title">
+                {products.length === 0 ? 'Nenhum produto cadastrado' : 'Nenhum produto encontrado'}
+              </p>
+              <p className="admin-empty-state-sub">
+                {products.length === 0 ? 'Importe um CSV para começar.' : 'Ajuste o filtro de busca.'}
+              </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10">
+                  <TableHead className="admin-th w-10">
                     <div className="flex items-center">
                       <Checkbox
                         checked={isAllSelected}
@@ -376,12 +380,12 @@ const AdminCatalog = () => {
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="w-16">Imagem</TableHead>
-                  <TableHead>Nome do Produto</TableHead>
-                  <TableHead>Tipo / Categoria</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Upload de Imagem</TableHead>
-                  <TableHead className="w-12"></TableHead>
+                  <TableHead className="admin-th w-16">Imagem</TableHead>
+                  <TableHead className="admin-th">Nome do Produto</TableHead>
+                  <TableHead className="admin-th">Tipo / Categoria</TableHead>
+                  <TableHead className="admin-th">Status</TableHead>
+                  <TableHead className="admin-th">Upload de Imagem</TableHead>
+                  <TableHead className="admin-th w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -489,8 +493,8 @@ const AdminCatalog = () => {
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

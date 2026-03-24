@@ -64,10 +64,23 @@ const PAGE_META: Record<string, { title: string; sub: string }> = {
 
 // ── component ──────────────────────────────────────────────────────────────────
 
+function getJwtUsername(): string {
+  try {
+    const token = localStorage.getItem("admin_token");
+    if (!token) return "A";
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const name: string = payload.username ?? payload.name ?? payload.sub ?? "A";
+    return name.charAt(0).toUpperCase();
+  } catch {
+    return "A";
+  }
+}
+
 const AdminLayout = () => {
   const navigate   = useNavigate();
   const location   = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const avatarLetter = getJwtUsername();
 
   useEffect(() => {
     const token = localStorage.getItem("admin_token");
@@ -148,7 +161,7 @@ const AdminLayout = () => {
         </div>
 
         {/* Nav groups */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
+        <nav className="flex-1 overflow-y-auto admin-scrollbar py-3 px-2 space-y-1">
           {NAV.map((group) => (
             <div key={group.group}>
               {!collapsed && (
@@ -256,7 +269,7 @@ const AdminLayout = () => {
                 color: "#1C1C1E",
               }}
             >
-              A
+              {avatarLetter}
             </div>
           </div>
         </header>

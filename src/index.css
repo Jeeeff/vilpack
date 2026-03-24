@@ -53,11 +53,16 @@
     --admin-text-muted:        0 0% 62%;     /* #9E9E9E */
     --admin-yellow:            42 97% 53%;   /* #F5C518 */
     --admin-yellow-soft:       42 97% 96%;   /* fundo suave amarelo */
+    --admin-yellow-hover:      42 97% 91%;   /* hover mais saturado */
     --admin-green:             142 60% 40%;  /* verde confirmação */
     --admin-green-soft:        142 50% 95%;  /* fundo suave verde */
+    --admin-red:               0 72% 50%;    /* vermelho alerta */
     --admin-red-soft:          0 84% 96%;    /* fundo suave vermelho */
     --admin-blue-soft:         210 80% 96%;  /* fundo suave azul */
     --admin-orange-soft:       28 90% 95%;   /* fundo suave laranja */
+    --admin-shadow-card:       0 1px 3px 0 rgba(0,0,0,.07), 0 1px 2px -1px rgba(0,0,0,.05);
+    --admin-shadow-raised:     0 4px 12px 0 rgba(0,0,0,.08), 0 1px 3px 0 rgba(0,0,0,.06);
+    --admin-shadow-modal:      0 24px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.10);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -132,7 +137,7 @@
     background-color: hsl(var(--admin-surface));
     border: 1px solid hsl(var(--admin-border));
     border-radius: 0.75rem;
-    box-shadow: 0 1px 3px 0 rgba(0,0,0,.06), 0 1px 2px -1px rgba(0,0,0,.04);
+    box-shadow: var(--admin-shadow-card);
   }
 
   /* Section label (ALL CAPS small) */
@@ -378,5 +383,135 @@
   }
   .admin-list-row:hover {
     background-color: hsl(var(--admin-surface-raised));
+  }
+
+  /* ── Metric strip row (horizontal KPIs) ─────────────────────────────────── */
+  .admin-metric-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+  .admin-metric-card {
+    flex: 1 1 0;
+    min-width: 140px;
+    background-color: hsl(var(--admin-surface));
+    border: 1px solid hsl(var(--admin-border));
+    border-radius: 0.75rem;
+    box-shadow: var(--admin-shadow-card);
+    padding: 1.125rem 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+  }
+  .admin-metric-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.625rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background-color: hsl(var(--admin-yellow-soft));
+  }
+
+  /* ── Primary CTA button (yellow fill) ─────────────────────────────────── */
+  .admin-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0 1rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    background-color: hsl(var(--admin-yellow));
+    color: #1C1C1E;
+    border: none;
+    cursor: pointer;
+    transition: background-color 150ms ease, box-shadow 150ms ease;
+    text-decoration: none;
+    letter-spacing: -0.01em;
+  }
+  .admin-btn-primary:hover {
+    background-color: hsl(var(--admin-yellow-hover));
+    box-shadow: 0 2px 8px rgba(245,197,24,.35);
+  }
+  .admin-btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* ── Section divider label ─────────────────────────────────────────────── */
+  .admin-section-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: hsl(var(--admin-text-muted));
+    margin-bottom: 0.625rem;
+    padding: 0 0.125rem;
+  }
+
+  /* ── Coming soon / feature card ────────────────────────────────────────── */
+  .admin-feature-card {
+    background-color: hsl(var(--admin-surface));
+    border: 1px solid hsl(var(--admin-border));
+    border-radius: 0.75rem;
+    box-shadow: var(--admin-shadow-card);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .admin-feature-card::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 3px;
+    background: linear-gradient(180deg, hsl(var(--admin-yellow)), hsl(var(--admin-yellow) / 0.2));
+    border-radius: 0 2px 2px 0;
+  }
+  .admin-feature-card-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.625rem;
+    background-color: hsl(var(--admin-bg));
+    border: 1px solid hsl(var(--admin-border));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Info pill (inline key/value) ──────────────────────────────────────── */
+  .admin-info-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    background-color: hsl(var(--admin-surface-raised));
+    border: 1px solid hsl(var(--admin-border));
+    color: hsl(var(--admin-text-secondary));
+    white-space: nowrap;
+  }
+
+  /* ── Scrollbar for admin panels ────────────────────────────────────────── */
+  .admin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--admin-border)) transparent;
+  }
+  .admin-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+  .admin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .admin-scrollbar::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--admin-border));
+    border-radius: 9999px;
   }
 }

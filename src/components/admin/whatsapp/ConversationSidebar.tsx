@@ -87,7 +87,7 @@ export function ConversationSidebar({ conversations, selectedId, onSelect, loadi
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto admin-scrollbar">
           {conversations.map((conv) => {
             const displayName =
               conv.contact.name ?? conv.contact.pushName ?? conv.contact.phone;

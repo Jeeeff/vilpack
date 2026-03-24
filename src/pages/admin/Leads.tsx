@@ -117,10 +117,8 @@ function MetricCard({
       style={{ flex: "1 1 0" }}
     >
       <div
-        className="flex items-center justify-center rounded-xl shrink-0"
+        className="admin-metric-icon shrink-0"
         style={{
-          width: "40px",
-          height: "40px",
           background: accent ?? "hsl(var(--admin-yellow-soft))",
         }}
       >
@@ -518,7 +516,7 @@ const AdminLeads = () => {
       <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
         <DialogContent
           className="max-w-6xl h-[90vh] p-0 overflow-hidden border-none flex flex-col"
-          style={{ borderRadius: "20px", boxShadow: "0 25px 60px rgba(0,0,0,.18)" }}
+          style={{ borderRadius: "20px", boxShadow: "var(--admin-shadow-modal)" }}
           aria-describedby={undefined}
         >
           <DialogTitle className="sr-only">
@@ -708,7 +706,7 @@ const AdminLeads = () => {
                     </span>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  <div className="flex-1 overflow-y-auto admin-scrollbar p-6 space-y-4">
                     {selectedLead.session?.messages.map((msg, idx) => (
                       <div
                         key={msg.id}

@@ -45,26 +45,19 @@ export default function Automacao() {
           {COMING_SOON_ITEMS.map(({ icon: Icon, title, description }) => (
             <div
               key={title}
-              className="admin-card rounded-xl border border-[hsl(var(--admin-border))] p-4 flex items-start gap-4 opacity-60"
+              className="admin-feature-card"
             >
-              <div className="h-9 w-9 rounded-lg bg-[hsl(var(--admin-surface-raised))] border border-[hsl(var(--admin-border))] flex items-center justify-center shrink-0">
-                <Icon className="h-4 w-4 text-[hsl(var(--admin-text-muted))]" />
+              <div className="admin-feature-card-icon shrink-0">
+                <Icon className="h-4 w-4" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[hsl(var(--admin-text-primary))]">{title}</p>
                 <p className="text-xs text-[hsl(var(--admin-text-secondary))] mt-0.5">{description}</p>
               </div>
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--admin-text-muted))] bg-[hsl(var(--admin-surface-raised))] border border-[hsl(var(--admin-border))] rounded-md px-2 py-0.5 shrink-0 mt-0.5">
-                Em breve
-              </span>
+              <span className="admin-badge-muted shrink-0 mt-0.5">Em breve</span>
             </div>
           ))}
         </div>
-
-        {/* Bottom note */}
-        <p className="text-xs text-[hsl(var(--admin-text-muted))] text-center">
-          Funcionalidades de automação disponíveis na Etapa 6.
-        </p>
 
       </div>
     </div>
