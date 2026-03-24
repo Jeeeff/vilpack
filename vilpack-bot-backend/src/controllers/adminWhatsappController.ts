@@ -3,9 +3,18 @@
  *
  * Rotas protegidas por authMiddleware (JWT).
  * Todas as chamadas à Evolution API passam pelo evolutionService — nunca direto.
+ *
+ * EvolutionError é tratado aqui com respostas HTTP semânticas:
+ *   PROVIDER_OFFLINE    → 503 (Evolution indisponível)
+ *   INSTANCE_NOT_FOUND  → 404 (instância não criada)
+ *   AUTH_ERROR          → 502 (API key inválida)
+ *   QR_NOT_AVAILABLE    → 202 (inicializando, tente novamente)
+ *   ALREADY_CONNECTED   → 200 (já conectado, sem QR)
+ *   CONFIG_MISSING      → 503 (variáveis de ambiente não configuradas)
+ *   UNKNOWN             → 502 (erro inesperado upstream)
  */
 import type { Request, Response, NextFunction } from 'express';
-import { evolutionService } from '../services/evolutionService.js';
+import { evolutionService, EvolutionError } from '../services/evolutionService.js';
 import { whatsappConversationService } from '../services/whatsappConversationService.js';
 import { whatsappMessageService } from '../services/whatsappMessageService.js';
 import { whatsappHandoffService } from '../services/whatsappHandoffService.js';
@@ -22,9 +31,38 @@ import prisma from '../config/prisma.js';
 
 function requireFlag(res: Response): boolean {
   if (!featureFlags.ENABLE_WHATSAPP_PANEL) {
-    res.status(503).json({ error: 'Módulo WhatsApp não habilitado' });
+    res.status(503).json({
+      error: 'Módulo WhatsApp não habilitado',
+      code: 'FEATURE_DISABLED',
+      hint: 'Ative a variável de ambiente ENABLE_WHATSAPP_PANEL=true no servidor.',
+    });
     return false;
   }
+  return true;
+}
+
+/** Trata EvolutionError com resposta HTTP semântica.
+ *  Retorna true se tratou (response já foi enviada), false se deve ir para next(). */
+function handleEvolutionError(err: unknown, res: Response): boolean {
+  if (!(err instanceof EvolutionError)) return false;
+
+  const map: Record<string, { status: number; hint: string }> = {
+    PROVIDER_OFFLINE:   { status: 503, hint: 'A Evolution API está offline ou inacessível. Verifique se o serviço está rodando e se EVOLUTION_BASE_URL está correto.' },
+    INSTANCE_NOT_FOUND: { status: 404, hint: 'A instância não existe na Evolution API. Use POST /instance/create para criá-la primeiro.' },
+    AUTH_ERROR:         { status: 502, hint: 'A Evolution API rejeitou a autenticação. Verifique EVOLUTION_API_KEY.' },
+    QR_NOT_AVAILABLE:   { status: 202, hint: 'Instância inicializando, QR Code ainda não disponível. Tente novamente em alguns segundos.' },
+    ALREADY_CONNECTED:  { status: 200, hint: 'Instância já está conectada ao WhatsApp.' },
+    CONFIG_MISSING:     { status: 503, hint: 'Variáveis de ambiente EVOLUTION_BASE_URL e/ou EVOLUTION_API_KEY não configuradas no servidor.' },
+    INVALID_RESPONSE:   { status: 502, hint: 'Evolution retornou resposta inesperada. Verifique a versão da Evolution API.' },
+    UNKNOWN:            { status: 502, hint: 'Erro inesperado ao comunicar com a Evolution API.' },
+  };
+
+  const entry = map[err.code] ?? map['UNKNOWN']!;
+  res.status(entry.status).json({
+    error: err.message,
+    code: err.code,
+    hint: entry.hint,
+  });
   return true;
 }
 
@@ -47,7 +85,7 @@ export async function getInstanceStatus(req: Request, res: Response, next: NextF
     const data = await evolutionService.getInstanceStatus();
     res.json(data);
   } catch (err) {
-    next(err);
+    if (!handleEvolutionError(err, res)) next(err);
   }
 }
 
@@ -57,7 +95,7 @@ export async function getQRCode(req: Request, res: Response, next: NextFunction)
     const data = await evolutionService.getQRCode();
     res.json(data);
   } catch (err) {
-    next(err);
+    if (!handleEvolutionError(err, res)) next(err);
   }
 }
 
@@ -67,7 +105,7 @@ export async function createInstance(req: Request, res: Response, next: NextFunc
     const data = await evolutionService.createInstance();
     res.json(data);
   } catch (err) {
-    next(err);
+    if (!handleEvolutionError(err, res)) next(err);
   }
 }
 
@@ -82,7 +120,7 @@ export async function setWebhook(req: Request, res: Response, next: NextFunction
     const data = await evolutionService.setWebhook(webhookUrl);
     res.json(data);
   } catch (err) {
-    next(err);
+    if (!handleEvolutionError(err, res)) next(err);
   }
 }
 
@@ -91,11 +129,11 @@ export async function setWebhook(req: Request, res: Response, next: NextFunction
 export async function listConversations(req: Request, res: Response, next: NextFunction) {
   if (!requireFlag(res)) return;
   try {
-    // Busca a instância vinculada ao storeId do token (ou a primeira disponível)
     const instance = await prisma.whatsappInstance.findFirst({
       orderBy: { createdAt: 'asc' },
     });
     if (!instance) {
+      // Sem instância no banco → retorna lista vazia (não é erro)
       res.json([]);
       return;
     }
@@ -173,17 +211,14 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
     }
     const { conversationId, text } = parsed.data;
 
-    // Busca contato pelo conversationId
     const conversation = await whatsappConversationService.getConversation(conversationId);
     if (!conversation) {
       res.status(404).json({ error: 'Conversa não encontrada' });
       return;
     }
 
-    // Envia via Evolution API
     const result = await evolutionService.sendText(conversation.contact.phone, text);
 
-    // Persiste a mensagem enviada
     const message = await whatsappMessageService.upsertMessage({
       conversationId,
       providerMessageId: result?.key?.id ?? undefined,
@@ -194,9 +229,7 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
       status:            'sent',
     });
 
-    // Emite em tempo real para o painel admin
     whatsappRealtimeService.emitNewMessage(conversationId, message);
-    // Atualiza lastMessageAt na conversa
     await whatsappConversationService.updateConversation(conversationId, {
       lastMessageAt: new Date(),
     });
@@ -204,7 +237,7 @@ export async function sendMessage(req: Request, res: Response, next: NextFunctio
 
     res.json({ success: true, message });
   } catch (err) {
-    next(err);
+    if (!handleEvolutionError(err, res)) next(err);
   }
 }
 

@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../config/prisma';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 const getSingleValue = (value: unknown): string | undefined => { 
@@ -9,9 +8,18 @@ const getSingleValue = (value: unknown): string | undefined => {
   return undefined; 
 };
 
+// ─── Usuários admin hardcoded ─────────────────────────────────────────────────
+// Dois logins fixos sem dependência de banco de dados.
+// ATENÇÃO: nunca commitar senhas em texto plano em produção.
+// Aqui é intencional por decisão do cliente.
+const ADMIN_USERS: Record<string, { id: string; role: string; password: string }> = {
+  Vilpack: { id: 'user-vilpack', role: 'admin', password: 'Savisu07*' },
+  Jeeeff:  { id: 'user-jeeeff', role: 'admin', password: 'ShinOO87190707' },
+};
+
 export const adminController = {
   /**
-   * Realiza o login administrativo
+   * Realiza o login administrativo (credenciais hardcoded — sem banco)
    */
   async login(req: Request, res: Response, next: NextFunction) {
     try {
@@ -22,24 +30,15 @@ export const adminController = {
         return;
       }
 
-      const user = await prisma.adminUser.findUnique({
-        where: { username }
-      });
+      const user = ADMIN_USERS[username as string];
 
-      if (!user) {
-        res.status(401).json({ error: 'Credenciais inválidas' });
-        return;
-      }
-
-      const isValid = await bcrypt.compare(password, user.password);
-
-      if (!isValid) {
+      if (!user || user.password !== password) {
         res.status(401).json({ error: 'Credenciais inválidas' });
         return;
       }
 
       const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role },
+        { id: user.id, username, role: user.role },
         process.env.JWT_SECRET || 'fallback_secret',
         { expiresIn: '8h' }
       );
