@@ -213,10 +213,15 @@ const AdminCatalog = () => {
   const isPartiallySelected = selectedProducts.size > 0 && selectedProducts.size < filtered.length;
 
   return (
-    <div className="admin-page-bg min-h-full p-6 md:p-8 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-[hsl(var(--admin-text-primary))]">Catálogo de Produtos</h2>
-        <p className="text-sm text-[hsl(var(--admin-text-secondary))] mt-1">Importe produtos via CSV e gerencie imagens do catálogo.</p>
+    <div className="admin-page space-y-5">
+      <div className="admin-page-header">
+        <div className="admin-page-header-icon">
+          <Package className="h-5 w-5 text-[hsl(42_80%_38%)]" />
+        </div>
+        <div>
+          <h2 className="admin-page-header-title">Catálogo de Produtos</h2>
+          <p className="admin-page-header-sub">Importe produtos via CSV e gerencie imagens do catálogo.</p>
+        </div>
       </div>
 
       {/* Import CSV Card */}

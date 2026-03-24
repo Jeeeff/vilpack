@@ -76,8 +76,8 @@ export default function Configuracao() {
   }, [token]);
 
   return (
-    <div className="admin-page-bg min-h-full p-6 md:p-8">
-      <div className="max-w-lg mx-auto space-y-6">
+    <div className="admin-page">
+      <div className="max-w-lg mx-auto space-y-5">
 
         {/* Page header */}
         <div className="flex items-start gap-3">

@@ -24,8 +24,8 @@ const COMING_SOON_ITEMS = [
 
 export default function Automacao() {
   return (
-    <div className="admin-page-bg min-h-full p-6 md:p-8">
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div className="admin-page">
+      <div className="max-w-2xl mx-auto space-y-5">
 
         {/* Page header */}
         <div className="flex items-start gap-3">

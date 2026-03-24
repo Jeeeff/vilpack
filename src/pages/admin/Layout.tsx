@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Outlet, useNavigate, Link, useLocation } from "react-router-dom";
+import { Outlet, useNavigate, Link, useLocation, Navigate } from "react-router-dom";
 import {
   Users,
   MessageSquare,
@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Bell,
   Package,
-  BarChart2,
 } from "lucide-react";
 
 // ── nav structure ──────────────────────────────────────────────────────────────
@@ -20,6 +19,7 @@ interface NavItem {
   icon: React.ElementType;
   to: string;
   match: string;
+  badge?: number; // future: unread count
 }
 
 interface NavGroup {
@@ -31,9 +31,8 @@ const NAV: NavGroup[] = [
   {
     group: "Principal",
     items: [
-      { label: "Dashboard",   icon: BarChart2,     to: "/admin/leads",    match: "leads"   },
-      { label: "CRM / Leads", icon: Users,         to: "/admin/leads",    match: "leads"   },
-      { label: "Catálogo",    icon: Package,       to: "/admin/catalog",  match: "catalog" },
+      { label: "CRM / Leads", icon: Users,   to: "/admin/leads",   match: "leads"   },
+      { label: "Catálogo",    icon: Package,  to: "/admin/catalog", match: "catalog" },
     ],
   },
   {
@@ -51,6 +50,17 @@ const NAV: NavGroup[] = [
     ],
   },
 ];
+
+// ── Page title & breadcrumb sub-label map ──────────────────────────────────────
+
+const PAGE_META: Record<string, { title: string; sub: string }> = {
+  leads:         { title: "CRM / Leads",       sub: "Pipeline comercial"         },
+  catalog:       { title: "Catálogo",           sub: "Produtos do portfólio"      },
+  atendimento:   { title: "Inbox WhatsApp",     sub: "Conversas em tempo real"    },
+  conexao:       { title: "Conexão WhatsApp",   sub: "Instância Evolution API"    },
+  automacao:     { title: "Automação",          sub: "Regras do bot"              },
+  configuracoes: { title: "Configurações",      sub: "Preferências do sistema"    },
+};
 
 // ── component ──────────────────────────────────────────────────────────────────
 
@@ -71,9 +81,9 @@ const AdminLayout = () => {
 
   const isActive = (match: string) => location.pathname.includes(match);
 
-  // Page title from current route
-  const currentItem = NAV.flatMap((g) => g.items).find((i) => isActive(i.match));
-  const pageTitle   = currentItem?.label ?? "Admin";
+  // Resolve active page meta
+  const activeMatch = NAV.flatMap((g) => g.items).find((i) => isActive(i.match));
+  const meta = activeMatch ? PAGE_META[activeMatch.match] : { title: "Admin", sub: "Vilpack CRM" };
 
   return (
     <div
@@ -91,7 +101,7 @@ const AdminLayout = () => {
           style={{ borderColor: "hsl(var(--admin-sidebar-border))" }}
         >
           <div
-            className="flex items-center justify-center shrink-0 rounded-lg font-black text-sm select-none"
+            className="flex items-center justify-center shrink-0 rounded-lg font-black select-none"
             style={{
               width: "34px",
               height: "34px",
@@ -105,7 +115,7 @@ const AdminLayout = () => {
           </div>
 
           {!collapsed && (
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div
                 className="font-bold text-sm leading-tight truncate"
                 style={{ color: "hsl(0 0% 92%)" }}
@@ -129,15 +139,18 @@ const AdminLayout = () => {
           >
             <ChevronRight
               size={13}
-              style={{ transform: collapsed ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 200ms" }}
+              style={{
+                transform: collapsed ? "rotate(0deg)" : "rotate(180deg)",
+                transition: "transform 200ms",
+              }}
             />
           </button>
         </div>
 
         {/* Nav groups */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2">
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
           {NAV.map((group) => (
-            <div key={group.group} className="mb-1">
+            <div key={group.group}>
               {!collapsed && (
                 <div className="sidebar-group-label">{group.group}</div>
               )}
@@ -150,12 +163,29 @@ const AdminLayout = () => {
                       key={item.to + item.match}
                       to={item.to}
                       className={`sidebar-item${active ? " active" : ""}`}
-                      style={collapsed ? { justifyContent: "center", paddingLeft: "0", paddingRight: "0" } : {}}
+                      style={
+                        collapsed
+                          ? { justifyContent: "center", paddingLeft: "0", paddingRight: "0" }
+                          : {}
+                      }
                       title={collapsed ? item.label : undefined}
                     >
                       <Icon size={16} className="shrink-0" />
                       {!collapsed && (
-                        <span className="flex-1 truncate">{item.label}</span>
+                        <>
+                          <span className="flex-1 truncate">{item.label}</span>
+                          {item.badge ? (
+                            <span
+                              className="text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none"
+                              style={{
+                                background: "hsl(var(--admin-yellow))",
+                                color: "#1C1C1E",
+                              }}
+                            >
+                              {item.badge}
+                            </span>
+                          ) : null}
+                        </>
                       )}
                     </Link>
                   );
@@ -173,11 +203,15 @@ const AdminLayout = () => {
           <button
             onClick={handleLogout}
             className="sidebar-item w-full"
-            style={collapsed ? { justifyContent: "center", paddingLeft: "0", paddingRight: "0" } : {}}
+            style={
+              collapsed
+                ? { justifyContent: "center", paddingLeft: "0", paddingRight: "0" }
+                : {}
+            }
             title={collapsed ? "Sair" : undefined}
           >
             <LogOut size={16} className="shrink-0" />
-            {!collapsed && <span className="flex-1">Sair</span>}
+            {!collapsed && <span className="flex-1 text-left">Sair</span>}
           </button>
         </div>
       </aside>
@@ -190,31 +224,33 @@ const AdminLayout = () => {
           className="shrink-0 flex items-center justify-between px-6 bg-white border-b"
           style={{ height: "56px", borderColor: "hsl(var(--admin-border))" }}
         >
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center min-w-0">
             <span
-              className="font-semibold tracking-tight leading-tight"
+              className="font-bold tracking-tight leading-snug truncate"
               style={{ fontSize: "0.9375rem", color: "hsl(var(--admin-text-primary))" }}
             >
-              {pageTitle}
+              {meta.title}
             </span>
             <span
-              className="text-[10px] font-semibold uppercase tracking-widest"
+              className="text-[10px] font-semibold uppercase tracking-widest truncate"
               style={{ color: "hsl(var(--admin-text-muted))" }}
             >
-              Vilpack CRM
+              {meta.sub}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 ml-4">
             <button
-              className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-gray-100"
+              className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-[hsl(var(--admin-bg))]"
               style={{ color: "hsl(var(--admin-text-secondary))" }}
               aria-label="Notificações"
             >
               <Bell size={15} />
             </button>
+
+            {/* Avatar */}
             <div
-              className="flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs select-none"
+              className="flex items-center justify-center w-8 h-8 rounded-full font-bold text-[11px] select-none shrink-0"
               style={{
                 background: "hsl(var(--admin-yellow))",
                 color: "#1C1C1E",

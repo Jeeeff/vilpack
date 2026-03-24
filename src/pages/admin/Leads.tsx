@@ -265,40 +265,30 @@ const AdminLeads = () => {
 
   // ── render ────────────────────────────────────────────────────────────────────
   return (
-    <div
-      className="min-h-full p-6"
-      style={{ background: "hsl(var(--admin-bg))" }}
-    >
+    <div className="admin-page">
       {/* Page header */}
-      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className="inline-block w-2 h-2 rounded-full animate-pulse"
-              style={{ background: "hsl(var(--admin-yellow))" }}
-            />
-            <span className="admin-label">Pipeline Comercial</span>
+      <div className="mb-5 flex items-start justify-between gap-4 flex-wrap">
+        <div className="admin-page-header mb-0">
+          <div className="admin-page-header-icon">
+            <Users size={18} style={{ color: "hsl(42 80% 38%)" }} />
           </div>
-          <h2
-            className="font-bold tracking-tight"
-            style={{ fontSize: "1.5rem", color: "hsl(var(--admin-text-primary))", letterSpacing: "-0.02em" }}
-          >
-            CRM / Leads
-          </h2>
-          <p style={{ color: "hsl(var(--admin-text-secondary))", fontSize: "0.8125rem", marginTop: "2px" }}>
-            Pipeline comercial alimentado pela Vick
-          </p>
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
+                style={{ background: "hsl(var(--admin-yellow))" }}
+              />
+              <span className="admin-label">Pipeline Comercial</span>
+            </div>
+            <h2 className="admin-page-header-title">CRM / Leads</h2>
+            <p className="admin-page-header-sub">Pipeline comercial alimentado pela Vick</p>
+          </div>
         </div>
 
         <button
           onClick={fetchLeads}
           disabled={isLoading}
-          className="inline-flex items-center gap-2 px-4 h-9 rounded-lg text-sm font-medium transition-all border"
-          style={{
-            background: "white",
-            borderColor: "hsl(var(--admin-border))",
-            color: "hsl(var(--admin-text-secondary))",
-          }}
+          className="admin-btn-secondary"
         >
           <RefreshCw size={13} className={cn(isLoading && "animate-spin")} />
           {isLoading ? "Sincronizando…" : "Atualizar"}
@@ -306,7 +296,7 @@ const AdminLeads = () => {
       </div>
 
       {/* Metric cards */}
-      <div className="flex gap-4 mb-6 flex-wrap">
+      <div className="flex gap-4 mb-5 flex-wrap">
         <MetricCard label="Total de leads"    value={total}     sub="no pipeline"         Icon={Users}       />
         <MetricCard label="Score quente"      value={hot}       sub="acima de 75%"        Icon={Zap}         accent="#EA580C" />
         <MetricCard label="Urgentes"          value={urgent}    sub="precisam de ação"    Icon={AlertCircle} accent="#DC2626" />
@@ -314,7 +304,7 @@ const AdminLeads = () => {
       </div>
 
       {/* Filters row */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="admin-filter-row">
         <div className="relative flex-1 min-w-[220px] max-w-sm">
           <Search
             size={14}
@@ -358,33 +348,23 @@ const AdminLeads = () => {
 
       {/* Table area */}
       {isLoading && leads.length === 0 ? (
-        <div
-          className="admin-card flex flex-col items-center justify-center py-24"
-        >
-          <Loader2 size={32} className="animate-spin mb-3" style={{ color: "hsl(var(--admin-yellow))" }} />
-          <p style={{ color: "hsl(var(--admin-text-secondary))", fontSize: "0.875rem" }}>
-            Carregando leads…
-          </p>
+        <div className="admin-card">
+          <div className="admin-empty-state">
+            <div className="admin-empty-state-icon">
+              <Loader2 size={24} className="animate-spin" style={{ color: "hsl(var(--admin-yellow))" }} />
+            </div>
+            <p className="admin-empty-state-title">Carregando leads…</p>
+          </div>
         </div>
       ) : filteredLeads.length === 0 ? (
-        <div
-          className="admin-card flex flex-col items-center justify-center py-24"
-        >
-          <div
-            className="flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
-            style={{ background: "hsl(var(--admin-bg))" }}
-          >
-            <Search size={24} style={{ color: "hsl(var(--admin-text-muted))" }} />
+        <div className="admin-card">
+          <div className="admin-empty-state">
+            <div className="admin-empty-state-icon">
+              <Search size={24} />
+            </div>
+            <p className="admin-empty-state-title">Nenhum lead encontrado</p>
+            <p className="admin-empty-state-sub">Ajuste os filtros ou aguarde novas interações</p>
           </div>
-          <p
-            className="font-semibold mb-1"
-            style={{ color: "hsl(var(--admin-text-primary))" }}
-          >
-            Nenhum lead encontrado
-          </p>
-          <p style={{ color: "hsl(var(--admin-text-secondary))", fontSize: "0.8125rem" }}>
-            Ajuste os filtros ou aguarde novas interações
-          </p>
         </div>
       ) : (
         <div className="admin-card overflow-hidden">
@@ -398,11 +378,7 @@ const AdminLeads = () => {
                   {["Lead / Identificação", "Status & Score", "Segmento", "Última interação", ""].map((h) => (
                     <TableHead
                       key={h}
-                      className={cn(
-                        "py-3 text-xs font-semibold uppercase tracking-widest",
-                        h === "" && "text-right",
-                      )}
-                      style={{ color: "hsl(var(--admin-text-muted))", background: "hsl(var(--admin-bg))" }}
+                      className={cn("admin-th", h === "" && "text-right")}
                     >
                       {h}
                     </TableHead>
