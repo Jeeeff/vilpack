@@ -213,9 +213,9 @@ const ProductsSection = () => {
                           />
                         )}
 
-                        {/* Price badge — circle overlapping bottom-right of image */}
+                        {/* Price circle — afastado um pouco dos cantos */}
                         {price && (
-                          <div className="absolute bottom-2 right-2 flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg ring-2 ring-white/60">
+                          <div className="absolute bottom-3 right-3 flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg ring-2 ring-white/60">
                             <span className="text-[10px] font-bold leading-tight text-center px-1">
                               {price}
                             </span>
@@ -229,16 +229,19 @@ const ProductsSection = () => {
                           {p.name}
                         </h3>
 
-                        {/* Tags */}
-                        {p.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {p.tags.map((t) => (
-                              <Badge key={t} variant="secondary" className="text-xs">
-                                {t}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
+                        {/* Tags + price badge (opção 2: badge amarelo na mesma linha das tags, alinhado à direita) */}
+                        <div className="flex flex-wrap items-center gap-1">
+                          {p.tags.map((t) => (
+                            <Badge key={t} variant="secondary" className="text-xs">
+                              {t}
+                            </Badge>
+                          ))}
+                          {price && (
+                            <span className="ml-auto shrink-0 rounded-full bg-primary text-primary-foreground text-xs font-bold px-2.5 py-1">
+                              {price}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   );
