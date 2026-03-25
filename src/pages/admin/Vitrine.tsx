@@ -46,9 +46,10 @@ const SEGMENTS = ["Alimentício", "E-commerce", "Industrial", "Varejo", "Higiene
 /** Resolve a full image URL from the stored path */
 function getImageSrc(imageUrl: string | null): string | null {
   if (!imageUrl) return null;
+  // imageUrl já é caminho relativo ("/uploads/products/...") — retorna direto.
+  // Nunca prefixar com VITE_API_URL; em produção o nginx serve /uploads estaticamente.
   if (imageUrl.startsWith("http")) return imageUrl;
-  const base = (import.meta.env.VITE_API_URL ?? "http://localhost:3001/api").replace("/api", "");
-  return `${base}${imageUrl}`;
+  return imageUrl;
 }
 
 function getAuthHeader() {

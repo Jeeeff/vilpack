@@ -38,11 +38,10 @@ interface ImportResult {
 
 const getImageSrc = (imageUrl: string | null) => {
   if (!imageUrl) return null;
+  // imageUrl já é caminho relativo ("/uploads/products/...") — retorna direto.
+  // Nunca prefixar com VITE_API_URL; em produção o nginx serve /uploads estaticamente.
   if (imageUrl.startsWith('http')) return imageUrl;
-  const base = import.meta.env.VITE_API_URL
-    ? import.meta.env.VITE_API_URL.replace('/api', '')
-    : '';
-  return `${base}${imageUrl}`;
+  return imageUrl;
 };
 
 const AdminCatalog = () => {
