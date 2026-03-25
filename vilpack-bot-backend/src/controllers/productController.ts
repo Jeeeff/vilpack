@@ -129,10 +129,14 @@ export const productController = {
 
   async create(req: Request, res: Response) {
     try {
-      const product = await productService.create(req.body);
+      // price é obrigatório no schema — no Catálogo não é definido pelo usuário
+      // (preço fica na Vitrine), por isso injetamos 0 como default se omitido.
+      const data = { price: 0, ...req.body };
+      const product = await productService.create(data);
       res.status(201).json(product);
-    } catch (error) {
-      res.status(500).json({ error: 'Erro ao criar produto' });
+    } catch (error: any) {
+      console.error('[PRODUCT CREATE ERROR]', error?.message, req.body);
+      res.status(500).json({ error: 'Erro ao criar produto', detail: error?.message });
     }
   },
 
