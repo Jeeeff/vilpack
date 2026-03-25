@@ -39,7 +39,7 @@ interface VitrineProduct {
 
 // ── constants ──────────────────────────────────────────────────────────────────
 
-const SEGMENTS = ["Alimentício", "E-commerce", "Industrial", "Varejo", "Higiene", "Geral"];
+const SEGMENTS = ["Mercado", "Padaria", "Limpeza", "Indústria", "Sacolas", "Bobinas", "Isopor", "Descartáveis"];
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
