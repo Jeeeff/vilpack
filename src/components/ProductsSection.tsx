@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 // ── types ──────────────────────────────────────────────────────────────────────
@@ -59,10 +58,10 @@ const ProductsSection = () => {
   const filtered =
     active === "Todos" ? products : products.filter((p) => p.segment === active);
 
-  const whatsappLink = (name: string) => {
+  const whatsappLink = () => {
     const phone = import.meta.env.VITE_WHATSAPP_NUMBER ?? "5500000000000";
     return `https://wa.me/${phone}?text=${encodeURIComponent(
-      `Olá, gostaria de um orçamento para ${name} que vi no site.`,
+      "Olá, gostaria de solicitar um orçamento para embalagens.",
     )}`;
   };
 
@@ -95,6 +94,20 @@ const ProductsSection = () => {
 
         {!loading && (
           <>
+            {/* WhatsApp CTA — single button, WhatsApp green */}
+            <div className="flex justify-center mb-8">
+              <a
+                href={whatsappLink()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold text-sm shadow-md transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "#25D366" }}
+              >
+                <MessageCircle size={18} />
+                Solicite Orçamento via WhatsApp
+              </a>
+            </div>
+
             {/* Filters */}
             <div className="flex flex-wrap justify-center gap-2 mb-10">
               {segments.map((s) => (
@@ -157,7 +170,7 @@ const ProductsSection = () => {
 
                         {/* Tags */}
                         {p.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-4">
+                          <div className="flex flex-wrap gap-1">
                             {p.tags.map((t) => (
                               <Badge key={t} variant="secondary" className="text-xs">
                                 {t}
@@ -165,12 +178,6 @@ const ProductsSection = () => {
                             ))}
                           </div>
                         )}
-
-                        <Button size="sm" className="w-full" asChild>
-                          <a href={whatsappLink(p.name)} target="_blank" rel="noopener noreferrer">
-                            <MessageCircle size={16} className="mr-1" /> Orçamento via WhatsApp
-                          </a>
-                        </Button>
                       </div>
                     </motion.div>
                   );
