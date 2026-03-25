@@ -34,20 +34,28 @@ function formatPrice(price: string): string | null {
 // ── demo fallback (usado apenas quando a API retorna 0 produtos) ───────────────
 
 const DEMO_PRODUCTS: VitrineProduct[] = [
-  { id: "demo-1", name: "Sacola Kraft Personalizada", description: null, price: "0.00", imageUrl: null, segment: "Varejo",      tags: ["kraft", "personalizado"] },
-  { id: "demo-2", name: "Caixa E-commerce Reforçada",  description: null, price: "0.00", imageUrl: null, segment: "E-commerce", tags: ["resistente", "selo"] },
-  { id: "demo-3", name: "Embalagem Alimentícia PET",   description: null, price: "0.00", imageUrl: null, segment: "Alimentício", tags: ["PET", "transparente"] },
-  { id: "demo-4", name: "Fita Adesiva Industrial",     description: null, price: "0.00", imageUrl: null, segment: "Industrial",  tags: ["larga", "alta resistência"] },
-  { id: "demo-5", name: "Caixinha Presente Luxo",      description: null, price: "0.00", imageUrl: null, segment: "Varejo",      tags: ["luxo", "tampa"] },
-  { id: "demo-6", name: "Envelope Segurança Correios", description: null, price: "0.00", imageUrl: null, segment: "E-commerce", tags: ["lacre", "resistente"] },
-  { id: "demo-7", name: "Bandeja Marmitex Aluminío",   description: null, price: "0.00", imageUrl: null, segment: "Alimentício", tags: ["alumínio", "descartável"] },
-  { id: "demo-8", name: "Strech Film 500m",            description: null, price: "0.00", imageUrl: null, segment: "Industrial",  tags: ["paletização", "filme"] },
+  { id: "demo-1", name: "Sacola Plástica Colorida",      description: null, price: "0.00", imageUrl: null, segment: "Sacolas",      tags: ["plástico", "colorida"] },
+  { id: "demo-2", name: "Sacola Kraft Personalizada",    description: null, price: "0.00", imageUrl: null, segment: "Sacolas",      tags: ["kraft", "personalizado"] },
+  { id: "demo-3", name: "Embalagem Pão de Forma",        description: null, price: "0.00", imageUrl: null, segment: "Padaria",      tags: ["plástico", "lacre"] },
+  { id: "demo-4", name: "Caixa Bolo Aniversário",        description: null, price: "0.00", imageUrl: null, segment: "Padaria",      tags: ["cartonada", "janela"] },
+  { id: "demo-5", name: "Bandeja Marmitex Alumínio",     description: null, price: "0.00", imageUrl: null, segment: "Mercado",      tags: ["alumínio", "descartável"] },
+  { id: "demo-6", name: "Embalagem Hortifrúti PET",      description: null, price: "0.00", imageUrl: null, segment: "Mercado",      tags: ["PET", "transparente"] },
+  { id: "demo-7", name: "Detergente Refil Embalagem",    description: null, price: "0.00", imageUrl: null, segment: "Limpeza",      tags: ["PEAD", "refil"] },
+  { id: "demo-8", name: "Galão Produto Limpeza 5L",      description: null, price: "0.00", imageUrl: null, segment: "Limpeza",      tags: ["galão", "resistente"] },
+  { id: "demo-9", name: "Strech Film Paletização 500m",  description: null, price: "0.00", imageUrl: null, segment: "Indústria",    tags: ["filme", "paletização"] },
+  { id: "demo-10", name: "Fita Adesiva Industrial Larga", description: null, price: "0.00", imageUrl: null, segment: "Indústria",   tags: ["larga", "alta resistência"] },
+  { id: "demo-11", name: "Bobina Plástica Transparente", description: null, price: "0.00", imageUrl: null, segment: "Bobinas",      tags: ["transparente", "rolo"] },
+  { id: "demo-12", name: "Bobina Impressa Personalizada",description: null, price: "0.00", imageUrl: null, segment: "Bobinas",      tags: ["impressa", "personalizado"] },
+  { id: "demo-13", name: "Copo Descartável 200ml",       description: null, price: "0.00", imageUrl: null, segment: "Descartáveis", tags: ["PS", "200ml"] },
+  { id: "demo-14", name: "Prato Descartável Reforçado",  description: null, price: "0.00", imageUrl: null, segment: "Descartáveis", tags: ["PP", "reforçado"] },
+  { id: "demo-15", name: "Caixa Isopor 10L",             description: null, price: "0.00", imageUrl: null, segment: "Isopor",       tags: ["EPS", "10 litros"] },
+  { id: "demo-16", name: "Isopor Placa Isolamento",      description: null, price: "0.00", imageUrl: null, segment: "Isopor",       tags: ["placa", "isolamento"] },
 ];
 
 const ProductsSection = () => {
   const [products,  setProducts]  = useState<VitrineProduct[]>([]);
   const [loading,   setLoading]   = useState(true);
-  const [active,    setActive]    = useState("Todos");
+  const [active,    setActive]    = useState("Todos os Produtos");
   const [usingDemo, setUsingDemo] = useState(false);
 
   useEffect(() => {
@@ -69,14 +77,18 @@ const ProductsSection = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  // Derive segment tabs dynamically from loaded products
-  const segments = [
-    "Todos",
-    ...Array.from(new Set(products.map((p) => p.segment))).sort(),
-  ];
+  // Ordem canônica dos segmentos
+  const SEGMENT_ORDER = ["Mercado", "Padaria", "Limpeza", "Indústria", "Sacolas", "Bobinas", "Isopor", "Descartáveis"];
+
+  // Deriva tabs: "Todos os Produtos" + segmentos na ordem canônica (presentes nos dados)
+  const presentSegments = Array.from(new Set(products.map((p) => p.segment)));
+  const orderedSegments = SEGMENT_ORDER.filter((s) => presentSegments.includes(s));
+  // Segmentos não previstos na ordem canônica ficam no final (ordem alfabética)
+  const extraSegments = presentSegments.filter((s) => !SEGMENT_ORDER.includes(s)).sort();
+  const segments = ["Todos os Produtos", ...orderedSegments, ...extraSegments];
 
   const filtered =
-    active === "Todos" ? products : products.filter((p) => p.segment === active);
+    active === "Todos os Produtos" ? products : products.filter((p) => p.segment === active);
 
   const whatsappLink = () => {
     const phone = import.meta.env.VITE_WHATSAPP_NUMBER ?? "5500000000000";
