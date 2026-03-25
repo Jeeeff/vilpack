@@ -43,22 +43,22 @@ function formatPrice(price: string): string | null {
 // ── demo fallback (usado apenas quando a API retorna 0 produtos) ───────────────
 
 const DEMO_PRODUCTS: VitrineProduct[] = [
-  { id: "demo-1",  name: "Sacola Plástica Colorida",       description: null, price: "0.00", imageUrl: null, segment: "Sacolas",      tags: ["plástico", "colorida"] },
-  { id: "demo-2",  name: "Sacola Kraft Personalizada",     description: null, price: "0.00", imageUrl: null, segment: "Sacolas",      tags: ["kraft", "personalizado"] },
-  { id: "demo-3",  name: "Embalagem Pão de Forma",         description: null, price: "0.00", imageUrl: null, segment: "Padaria",      tags: ["plástico", "lacre"] },
-  { id: "demo-4",  name: "Caixa Bolo Aniversário",         description: null, price: "0.00", imageUrl: null, segment: "Padaria",      tags: ["cartonada", "janela"] },
-  { id: "demo-5",  name: "Bandeja Marmitex Alumínio",      description: null, price: "0.00", imageUrl: null, segment: "Mercado",      tags: ["alumínio", "descartável"] },
-  { id: "demo-6",  name: "Embalagem Hortifrúti PET",       description: null, price: "0.00", imageUrl: null, segment: "Mercado",      tags: ["PET", "transparente"] },
-  { id: "demo-7",  name: "Detergente Refil Embalagem",     description: null, price: "0.00", imageUrl: null, segment: "Limpeza",      tags: ["PEAD", "refil"] },
-  { id: "demo-8",  name: "Galão Produto Limpeza 5L",       description: null, price: "0.00", imageUrl: null, segment: "Limpeza",      tags: ["galão", "resistente"] },
-  { id: "demo-9",  name: "Strech Film Paletização 500m",   description: null, price: "0.00", imageUrl: null, segment: "Indústria",    tags: ["filme", "paletização"] },
-  { id: "demo-10", name: "Fita Adesiva Industrial Larga",  description: null, price: "0.00", imageUrl: null, segment: "Indústria",    tags: ["larga", "alta resistência"] },
-  { id: "demo-11", name: "Bobina Plástica Transparente",   description: null, price: "0.00", imageUrl: null, segment: "Bobinas",      tags: ["transparente", "rolo"] },
-  { id: "demo-12", name: "Bobina Impressa Personalizada",  description: null, price: "0.00", imageUrl: null, segment: "Bobinas",      tags: ["impressa", "personalizado"] },
-  { id: "demo-13", name: "Copo Descartável 200ml",         description: null, price: "0.00", imageUrl: null, segment: "Descartáveis", tags: ["PS", "200ml"] },
-  { id: "demo-14", name: "Prato Descartável Reforçado",    description: null, price: "0.00", imageUrl: null, segment: "Descartáveis", tags: ["PP", "reforçado"] },
-  { id: "demo-15", name: "Caixa Isopor 10L",               description: null, price: "0.00", imageUrl: null, segment: "Isopor",       tags: ["EPS", "10 litros"] },
-  { id: "demo-16", name: "Isopor Placa Isolamento",        description: null, price: "0.00", imageUrl: null, segment: "Isopor",       tags: ["placa", "isolamento"] },
+  { id: "demo-1",  name: "Sacola Plástica Colorida",       description: null, price: "12.90",  imageUrl: null, segment: "Sacolas",      tags: ["plástico", "colorida"] },
+  { id: "demo-2",  name: "Sacola Kraft Personalizada",     description: null, price: "24.50",  imageUrl: null, segment: "Sacolas",      tags: ["kraft", "personalizado"] },
+  { id: "demo-3",  name: "Embalagem Pão de Forma",         description: null, price: "8.70",   imageUrl: null, segment: "Padaria",      tags: ["plástico", "lacre"] },
+  { id: "demo-4",  name: "Caixa Bolo Aniversário",         description: null, price: "32.00",  imageUrl: null, segment: "Padaria",      tags: ["cartonada", "janela"] },
+  { id: "demo-5",  name: "Bandeja Marmitex Alumínio",      description: null, price: "6.50",   imageUrl: null, segment: "Mercado",      tags: ["alumínio", "descartável"] },
+  { id: "demo-6",  name: "Embalagem Hortifrúti PET",       description: null, price: "11.20",  imageUrl: null, segment: "Mercado",      tags: ["PET", "transparente"] },
+  { id: "demo-7",  name: "Detergente Refil Embalagem",     description: null, price: "9.80",   imageUrl: null, segment: "Limpeza",      tags: ["PEAD", "refil"] },
+  { id: "demo-8",  name: "Galão Produto Limpeza 5L",       description: null, price: "18.40",  imageUrl: null, segment: "Limpeza",      tags: ["galão", "resistente"] },
+  { id: "demo-9",  name: "Strech Film Paletização 500m",   description: null, price: "47.00",  imageUrl: null, segment: "Indústria",    tags: ["filme", "paletização"] },
+  { id: "demo-10", name: "Fita Adesiva Industrial Larga",  description: null, price: "15.90",  imageUrl: null, segment: "Indústria",    tags: ["larga", "alta resistência"] },
+  { id: "demo-11", name: "Bobina Plástica Transparente",   description: null, price: "22.00",  imageUrl: null, segment: "Bobinas",      tags: ["transparente", "rolo"] },
+  { id: "demo-12", name: "Bobina Impressa Personalizada",  description: null, price: "38.50",  imageUrl: null, segment: "Bobinas",      tags: ["impressa", "personalizado"] },
+  { id: "demo-13", name: "Copo Descartável 200ml",         description: null, price: "4.90",   imageUrl: null, segment: "Descartáveis", tags: ["PS", "200ml"] },
+  { id: "demo-14", name: "Prato Descartável Reforçado",    description: null, price: "7.30",   imageUrl: null, segment: "Descartáveis", tags: ["PP", "reforçado"] },
+  { id: "demo-15", name: "Caixa Isopor 10L",               description: null, price: "28.00",  imageUrl: null, segment: "Isopor",       tags: ["EPS", "10 litros"] },
+  { id: "demo-16", name: "Isopor Placa Isolamento",        description: null, price: "19.60",  imageUrl: null, segment: "Isopor",       tags: ["placa", "isolamento"] },
 ];
 
 // ── component ──────────────────────────────────────────────────────────────────
@@ -180,8 +180,8 @@ const ProductsSection = () => {
               ))}
             </div>
 
-            {/* Product grid — 2 cols, 4 rows = 8 per page */}
-            <div className="grid grid-cols-2 gap-4 md:gap-6">
+            {/* Product grid — 4 cols × 2 rows = 8 per page */}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <AnimatePresence mode="popLayout">
                 {paginated.map((p) => {
                   const imgSrc = getImageSrc(p.imageUrl);
