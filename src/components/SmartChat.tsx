@@ -205,7 +205,7 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-4 right-4 md:bottom-6 md:right-6 w-[calc(100vw-32px)] md:w-[420px] h-[85vh] md:h-[650px] max-h-[90vh] shadow-[-20px_20px_60px_rgba(0,0,0,0.15)] z-50 flex flex-col border-none overflow-hidden rounded-3xl animate-in slide-in-from-bottom-10 fade-in duration-500">
+        <Card className="fixed bottom-4 right-4 md:bottom-6 md:right-6 w-[calc(100vw-32px)] md:w-[420px] h-[min(560px,calc(100dvh-2rem))] md:h-[650px] max-h-[calc(100dvh-2rem)] shadow-[-20px_20px_60px_rgba(0,0,0,0.15)] z-50 flex flex-col border-none overflow-hidden rounded-3xl animate-in slide-in-from-bottom-10 fade-in duration-500">
           <CardHeader className="bg-primary text-primary-foreground p-5 flex flex-row items-center justify-between shrink-0 shadow-lg relative z-10">
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -215,7 +215,7 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                 <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 border-2 border-primary rounded-full"></div>
               </div>
               <div>
-                <CardTitle className="text-xl font-bold tracking-tight">Consultoria Vick</CardTitle>
+                <CardTitle className="text-xl font-bold tracking-tight">Vendedora Vick</CardTitle>
                 <div className="flex items-center gap-1.5">
                   <div className="h-1.5 w-1.5 bg-green-400 rounded-full animate-pulse"></div>
                   <p className="text-xs text-primary-foreground/70 font-medium">Online e pronta para ajudar</p>
