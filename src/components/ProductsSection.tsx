@@ -1,28 +1,73 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-const segments = ["Todos", "Alimentício", "E-commerce", "Industrial", "Varejo"];
+// ── types ──────────────────────────────────────────────────────────────────────
 
-const products = [
-  { name: "Saco Stand-Up Pouch", segment: "Alimentício", tags: ["Biodegradável", "Vedação Hermética"], img: "/placeholder.svg" },
-  { name: "Caixa Kraft Reforçada", segment: "E-commerce", tags: ["Alta Resistência", "Reciclável"], img: "/placeholder.svg" },
-  { name: "Filme Stretch Industrial", segment: "Industrial", tags: ["Alta Performance", "20µm"], img: "/placeholder.svg" },
-  { name: "Sacola Personalizada PP", segment: "Varejo", tags: ["Impressão HD", "Reutilizável"], img: "/placeholder.svg" },
-  { name: "Embalagem Vacuum Bag", segment: "Alimentício", tags: ["Alta Barreira", "BPA Free"], img: "/placeholder.svg" },
-  { name: "Caixa E-commerce Duplex", segment: "E-commerce", tags: ["Montagem Rápida", "Impressa"], img: "/placeholder.svg" },
-  { name: "Filme Shrink POF", segment: "Industrial", tags: ["Termocontrátil", "Transparente"], img: "/placeholder.svg" },
-  { name: "Sacola TNT Ecológica", segment: "Varejo", tags: ["Ecológica", "Personalizada"], img: "/placeholder.svg" },
-];
+interface VitrineProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  price: string;           // "0.00" etc.
+  imageUrl: string | null;
+  segment: string;         // já normalizado pelo backend
+  tags: string[];          // já parseado pelo backend
+}
+
+// ── helpers ────────────────────────────────────────────────────────────────────
+
+function getImageSrc(imageUrl: string | null): string | null {
+  if (!imageUrl) return null;
+  if (imageUrl.startsWith("http")) return imageUrl;
+  const base = (import.meta.env.VITE_API_URL ?? "http://localhost:3001/api").replace("/api", "");
+  return `${base}${imageUrl}`;
+}
+
+function formatPrice(price: string): string | null {
+  const n = parseFloat(price);
+  if (!n || n === 0) return null;
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+// ── component ──────────────────────────────────────────────────────────────────
 
 const ProductsSection = () => {
-  const [active, setActive] = useState("Todos");
-  const filtered = active === "Todos" ? products : products.filter((p) => p.segment === active);
+  const [products, setProducts] = useState<VitrineProduct[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [active,   setActive]   = useState("Todos");
 
-  const whatsappLink = (name: string) =>
-    `https://wa.me/5500000000000?text=${encodeURIComponent(`Olá, gostaria de um orçamento para ${name} que vi no site.`)}`;
+  useEffect(() => {
+    const apiBase = (import.meta.env.VITE_API_URL ?? "http://localhost:3001/api");
+    fetch(`${apiBase}/vitrine`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data: VitrineProduct[]) => setProducts(data))
+      .catch(() => {
+        // Se a API falhar, não quebra o site — seção fica vazia silenciosamente
+        setProducts([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Derive segment tabs dynamically from loaded products
+  const segments = [
+    "Todos",
+    ...Array.from(new Set(products.map((p) => p.segment))).sort(),
+  ];
+
+  const filtered =
+    active === "Todos" ? products : products.filter((p) => p.segment === active);
+
+  const whatsappLink = (name: string) => {
+    const phone = import.meta.env.VITE_WHATSAPP_NUMBER ?? "5500000000000";
+    return `https://wa.me/${phone}?text=${encodeURIComponent(
+      `Olá, gostaria de um orçamento para ${name} que vi no site.`,
+    )}`;
+  };
+
+  // Don't render the section at all if there are no products and we've finished loading
+  if (!loading && products.length === 0) return null;
 
   return (
     <section id="produtos" className="py-20">
@@ -41,58 +86,99 @@ const ProductsSection = () => {
           </p>
         </motion.div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap justify-center gap-2 mb-10">
-          {segments.map((s) => (
-            <button
-              key={s}
-              onClick={() => setActive(s)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                active === s
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        {/* Loading state */}
+        {loading && (
+          <div className="flex justify-center py-16">
+            <Loader2 size={28} className="animate-spin text-muted-foreground" />
+          </div>
+        )}
 
-        {/* Product grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <AnimatePresence mode="popLayout">
-            {filtered.map((p) => (
-              <motion.div
-                key={p.name}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.3 }}
-                className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow group"
-              >
-                <div className="aspect-[4/3] bg-muted flex items-center justify-center">
-                  <img src={p.img} alt={p.name} className="w-16 h-16 opacity-30" />
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-foreground mb-2">{p.name}</h3>
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {p.tags.map((t) => (
-                      <Badge key={t} variant="secondary" className="text-xs">
-                        {t}
-                      </Badge>
-                    ))}
-                  </div>
-                  <Button size="sm" className="w-full" asChild>
-                    <a href={whatsappLink(p.name)} target="_blank" rel="noopener noreferrer">
-                      <MessageCircle size={16} className="mr-1" /> Orçamento via WhatsApp
-                    </a>
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+        {!loading && (
+          <>
+            {/* Filters */}
+            <div className="flex flex-wrap justify-center gap-2 mb-10">
+              {segments.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setActive(s)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    active === s
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {/* Product grid */}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <AnimatePresence mode="popLayout">
+                {filtered.map((p) => {
+                  const imgSrc = getImageSrc(p.imageUrl);
+                  const price  = formatPrice(p.price);
+
+                  return (
+                    <motion.div
+                      key={p.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.3 }}
+                      className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow group"
+                    >
+                      {/* Image */}
+                      <div className="aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden">
+                        {imgSrc ? (
+                          <img
+                            src={imgSrc}
+                            alt={p.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <img
+                            src="/placeholder.svg"
+                            alt={p.name}
+                            className="w-16 h-16 opacity-30"
+                          />
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-4">
+                        <h3 className="font-semibold text-foreground mb-1">{p.name}</h3>
+
+                        {/* Price (only when > 0) */}
+                        {price && (
+                          <p className="text-sm font-bold text-primary mb-2">{price}</p>
+                        )}
+
+                        {/* Tags */}
+                        {p.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-4">
+                            {p.tags.map((t) => (
+                              <Badge key={t} variant="secondary" className="text-xs">
+                                {t}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+
+                        <Button size="sm" className="w-full" asChild>
+                          <a href={whatsappLink(p.name)} target="_blank" rel="noopener noreferrer">
+                            <MessageCircle size={16} className="mr-1" /> Orçamento via WhatsApp
+                          </a>
+                        </Button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

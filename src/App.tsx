@@ -11,6 +11,7 @@ import AdminLogin from "./pages/admin/Login";
 import AdminLayout from "./pages/admin/Layout";
 import AdminLeads from "./pages/admin/Leads";
 import AdminCatalog from "./pages/admin/Catalog";
+import AdminVitrine from "./pages/admin/Vitrine";
 import AtendimentoInbox from "./pages/admin/atendimento/index";
 import AtendimentoConfiguracao from "./pages/admin/atendimento/Configuracao";
 import AtendimentoAutomacao from "./pages/admin/atendimento/Automacao";
@@ -36,6 +37,7 @@ const AppRoutes = () => {
           <Route index element={<Navigate to="leads" replace />} />
           <Route path="leads" element={<AdminLeads />} />
           <Route path="catalog" element={<AdminCatalog />} />
+          <Route path="vitrine" element={<AdminVitrine />} />
           <Route path="atendimento" element={<AtendimentoInbox />} />
           <Route path="conexao" element={<AtendimentoConfiguracao />} />
           <Route path="automacao" element={<AtendimentoAutomacao />} />

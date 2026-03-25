@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Bell,
   Package,
+  Globe,
 } from "lucide-react";
 
 // ── nav structure ──────────────────────────────────────────────────────────────
@@ -33,6 +34,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: "CRM / Leads", icon: Users,   to: "/admin/leads",   match: "leads"   },
       { label: "Catálogo",    icon: Package,  to: "/admin/catalog", match: "catalog" },
+      { label: "Vitrine",     icon: Globe,    to: "/admin/vitrine", match: "vitrine" },
     ],
   },
   {
@@ -54,12 +56,13 @@ const NAV: NavGroup[] = [
 // ── Page title & breadcrumb sub-label map ──────────────────────────────────────
 
 const PAGE_META: Record<string, { title: string; sub: string }> = {
-  leads:         { title: "CRM / Leads",       sub: "Pipeline comercial"         },
-  catalog:       { title: "Catálogo",           sub: "Produtos do portfólio"      },
-  atendimento:   { title: "Inbox WhatsApp",     sub: "Conversas em tempo real"    },
-  conexao:       { title: "Conexão WhatsApp",   sub: "Instância Evolution API"    },
-  automacao:     { title: "Automação",          sub: "Regras do bot"              },
-  configuracoes: { title: "Configurações",      sub: "Preferências do sistema"    },
+  leads:         { title: "CRM / Leads",       sub: "Pipeline comercial"                  },
+  catalog:       { title: "Catálogo",           sub: "Produtos do portfólio"               },
+  vitrine:       { title: "Vitrine",            sub: "Nossos Produtos no site público"     },
+  atendimento:   { title: "Inbox WhatsApp",     sub: "Conversas em tempo real"             },
+  conexao:       { title: "Conexão WhatsApp",   sub: "Instância Evolution API"             },
+  automacao:     { title: "Automação",          sub: "Regras do bot"                       },
+  configuracoes: { title: "Configurações",      sub: "Preferências do sistema"             },
 };
 
 // ── component ──────────────────────────────────────────────────────────────────

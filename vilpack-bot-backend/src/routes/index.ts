@@ -9,6 +9,7 @@ import orderRoutes from './orderRoutes';
 import adminRoutes from './adminRoutes';
 import adminWhatsappRoutes from './adminWhatsappRoutes';
 import evolutionWebhookRoutes from './evolutionWebhookRoutes';
+import { vitrinePublicRouter, vitrineAdminRouter } from './vitrineRoutes';
 
 const router = Router();
 
@@ -21,6 +22,10 @@ router.use('/order', orderRoutes);
 router.use('/admin', adminRoutes);
 router.use('/admin/whatsapp', adminWhatsappRoutes);
 router.use('/webhooks/evolution', evolutionWebhookRoutes);
+
+// Vitrine — site público + gestão admin
+router.use('/vitrine', vitrinePublicRouter);
+router.use('/admin/vitrine', vitrineAdminRouter);
 
 router.get('/force-migrate', async (req, res) => {
     try {
