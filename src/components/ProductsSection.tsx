@@ -31,20 +31,40 @@ function formatPrice(price: string): string | null {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-// ── component ──────────────────────────────────────────────────────────────────
+// ── demo fallback (usado apenas quando a API retorna 0 produtos) ───────────────
+
+const DEMO_PRODUCTS: VitrineProduct[] = [
+  { id: "demo-1", name: "Sacola Kraft Personalizada", description: null, price: "0.00", imageUrl: null, segment: "Varejo",      tags: ["kraft", "personalizado"] },
+  { id: "demo-2", name: "Caixa E-commerce Reforçada",  description: null, price: "0.00", imageUrl: null, segment: "E-commerce", tags: ["resistente", "selo"] },
+  { id: "demo-3", name: "Embalagem Alimentícia PET",   description: null, price: "0.00", imageUrl: null, segment: "Alimentício", tags: ["PET", "transparente"] },
+  { id: "demo-4", name: "Fita Adesiva Industrial",     description: null, price: "0.00", imageUrl: null, segment: "Industrial",  tags: ["larga", "alta resistência"] },
+  { id: "demo-5", name: "Caixinha Presente Luxo",      description: null, price: "0.00", imageUrl: null, segment: "Varejo",      tags: ["luxo", "tampa"] },
+  { id: "demo-6", name: "Envelope Segurança Correios", description: null, price: "0.00", imageUrl: null, segment: "E-commerce", tags: ["lacre", "resistente"] },
+  { id: "demo-7", name: "Bandeja Marmitex Aluminío",   description: null, price: "0.00", imageUrl: null, segment: "Alimentício", tags: ["alumínio", "descartável"] },
+  { id: "demo-8", name: "Strech Film 500m",            description: null, price: "0.00", imageUrl: null, segment: "Industrial",  tags: ["paletização", "filme"] },
+];
 
 const ProductsSection = () => {
-  const [products, setProducts] = useState<VitrineProduct[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [active,   setActive]   = useState("Todos");
+  const [products,  setProducts]  = useState<VitrineProduct[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [active,    setActive]    = useState("Todos");
+  const [usingDemo, setUsingDemo] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/vitrine`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((data: VitrineProduct[]) => setProducts(data))
+      .then((data: VitrineProduct[]) => {
+        if (data.length > 0) {
+          setProducts(data);
+        } else {
+          setProducts(DEMO_PRODUCTS);
+          setUsingDemo(true);
+        }
+      })
       .catch(() => {
-        // Se a API falhar, não quebra o site — seção fica vazia silenciosamente
-        setProducts([]);
+        // Se a API falhar, exibe demos para não esconder a seção
+        setProducts(DEMO_PRODUCTS);
+        setUsingDemo(true);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -82,6 +102,11 @@ const ProductsSection = () => {
           <p className="text-muted-foreground max-w-md mx-auto">
             Filtre por segmento e encontre a embalagem ideal.
           </p>
+          {usingDemo && (
+            <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full inline-block px-3 py-1">
+              Demonstração — cadastre produtos reais no painel admin
+            </p>
+          )}
         </motion.div>
 
         {/* Loading state */}
