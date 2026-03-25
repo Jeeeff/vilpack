@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { API_URL } from "@/config/api";
 
 // ── types ──────────────────────────────────────────────────────────────────────
 
@@ -20,7 +21,7 @@ interface VitrineProduct {
 function getImageSrc(imageUrl: string | null): string | null {
   if (!imageUrl) return null;
   if (imageUrl.startsWith("http")) return imageUrl;
-  const base = (import.meta.env.VITE_API_URL ?? "http://localhost:3001/api").replace("/api", "");
+  const base = API_URL.replace("/api", "");
   return `${base}${imageUrl}`;
 }
 
@@ -38,8 +39,7 @@ const ProductsSection = () => {
   const [active,   setActive]   = useState("Todos");
 
   useEffect(() => {
-    const apiBase = (import.meta.env.VITE_API_URL ?? "http://localhost:3001/api");
-    fetch(`${apiBase}/vitrine`)
+    fetch(`${API_URL}/vitrine`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data: VitrineProduct[]) => setProducts(data))
       .catch(() => {
@@ -64,7 +64,6 @@ const ProductsSection = () => {
       "Olá, gostaria de solicitar um orçamento para embalagens.",
     )}`;
   };
-
   // Don't render the section at all if there are no products and we've finished loading
   if (!loading && products.length === 0) return null;
 
