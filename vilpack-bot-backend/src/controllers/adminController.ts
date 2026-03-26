@@ -54,20 +54,29 @@ export const adminController = {
    */
   async listLeads(req: Request, res: Response, next: NextFunction) {
     try {
-      const leads = await prisma.lead.findMany({
-        orderBy: { lastInteractionAt: 'desc' },
-        include: {
-          summary: true,
-          session: {
-            select: {
-              _count: {
-                select: { messages: true }
+      const limit = Math.min(parseInt(getSingleValue(req.query.limit) || '100', 10) || 100, 200);
+      const page  = Math.max(parseInt(getSingleValue(req.query.page)  || '1',   10) || 1,  1);
+      const skip  = (page - 1) * limit;
+
+      const [leads, total] = await Promise.all([
+        prisma.lead.findMany({
+          orderBy: { lastInteractionAt: 'desc' },
+          take: limit,
+          skip,
+          include: {
+            summary: true,
+            session: {
+              select: {
+                _count: {
+                  select: { messages: true }
+                }
               }
             }
           }
-        }
-      });
-      res.json(leads);
+        }),
+        prisma.lead.count(),
+      ]);
+      res.json({ leads, total, page, limit });
     } catch (error) {
       next(error);
     }
@@ -94,7 +103,8 @@ export const adminController = {
           session: {
             include: {
               messages: {
-                orderBy: { createdAt: 'asc' }
+                orderBy: { createdAt: 'asc' },
+                take: 200,
               }
             }
           }

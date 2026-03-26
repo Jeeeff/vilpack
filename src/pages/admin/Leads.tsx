@@ -189,7 +189,7 @@ const AdminLeads = () => {
       const res = await fetch(`${API_URL}/admin/leads`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) setLeads(await res.json());
+      if (res.ok) { const data = await res.json(); setLeads(Array.isArray(data) ? data : (data.leads ?? [])); }
     } catch {
       toast({ title: "Erro", description: "Falha ao carregar leads.", variant: "destructive" });
     } finally {
@@ -224,7 +224,8 @@ const AdminLeads = () => {
       });
       if (res.ok) {
         toast({ title: "Status atualizado." });
-        fetchLeads();
+        // Update local list state — no full re-fetch needed
+        setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, status: newStatus } : l));
         if (selectedLead?.id === leadId) setSelectedLead({ ...selectedLead, status: newStatus });
       }
     } catch (e) {
@@ -244,7 +245,7 @@ const AdminLeads = () => {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ notes }),
       });
-      if (res.ok) { toast({ title: "Notas salvas." }); fetchLeads(); }
+      if (res.ok) { toast({ title: "Notas salvas." }); setLeads((prev) => prev.map((l) => l.id === selectedLead!.id ? { ...l, internalNotes: notes } : l)); }
     } catch (e) { console.error(e); }
     finally { setIsUpdating(false); }
   };

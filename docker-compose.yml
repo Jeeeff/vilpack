@@ -3,6 +3,12 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -11,9 +17,15 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-vilpack}
     networks:
       - vilpack-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
   backend:
     build: ./vilpack-bot-backend
+    restart: unless-stopped
     ports:
       - "3001:3001"
     environment:
@@ -32,12 +44,19 @@ services:
     volumes:
       - ./uploads:/app/public/uploads
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - vilpack-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 512M
 
   frontend:
     build: .
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
@@ -47,6 +66,11 @@ services:
       - backend
     networks:
       - vilpack-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
 
 volumes:
   postgres_data:

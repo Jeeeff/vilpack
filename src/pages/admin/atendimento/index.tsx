@@ -209,18 +209,22 @@ export default function AtendimentoInbox() {
         setMessages((prev) => [...prev, message as MessageItem]);
         apiFetch(`/conversations/${conversationId}/read`, { method: 'POST' }).catch(() => {});
         setConversations((prev) =>
-          prev.map((c) => c.id === conversationId ? { ...c, unreadCount: 0 } : c),
+          prev.map((c) =>
+            c.id === conversationId
+              ? { ...c, unreadCount: 0, lastMessageAt: (message as MessageItem).createdAt }
+              : c,
+          ),
         );
       } else {
         setConversations((prev) =>
           prev.map((c) =>
             c.id === conversationId
-              ? { ...c, unreadCount: (c.unreadCount ?? 0) + 1 }
+              ? { ...c, unreadCount: (c.unreadCount ?? 0) + 1, lastMessageAt: (message as MessageItem).createdAt }
               : c,
           ),
         );
       }
-      loadConversations();
+      // Sidebar state updated optimistically above — no HTTP poll needed here.
     },
     onMessageStatus: ({ conversationId, messageId, status }: MessageStatusPayload) => {
       if (conversationId === selectedId) {

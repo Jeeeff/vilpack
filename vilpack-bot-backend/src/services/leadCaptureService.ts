@@ -47,7 +47,6 @@ export const leadCaptureService = {
     const emailMatch = message.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
     if (emailMatch) {
       data.email = emailMatch[0].toLowerCase();
-      console.log(`[LEAD_REGEX] E-mail detectado: ${data.email}`);
     }
 
     // 2. WhatsApp/Telefone (Normalização para Padrão Brasileiro 11 dígitos)
@@ -57,14 +56,12 @@ export const leadCaptureService = {
         phoneDigits = phoneDigits.substring(2);
       }
       data.whatsapp = phoneDigits;
-      console.log(`[LEAD_REGEX] Telefone detectado: ${data.whatsapp}`);
     }
 
     // 3. Nome (Padrões Explícitos)
     const nameMatch = message.match(/(?:meu nome é|me chame de|sou o|sou a)\s+([a-zA-ZÀ-ÿ]+)/i);
     if (nameMatch && nameMatch[1].length > 2) {
       data.name = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1).toLowerCase();
-      console.log(`[LEAD_REGEX] Nome detectado: ${data.name}`);
     }
 
     return data;
@@ -98,7 +95,7 @@ export const leadCaptureService = {
       
       // Regra 1: Cache de Contexto (Evita reprocessar se nada mudou)
       if (currentLead?.lastLeadContextHash === contextHash) {
-        console.log(`[LEAD_IA] Pulando extração: Contexto idêntico detectado (Hash: ${contextHash})`);
+        console.debug(`[LEAD_IA] Pulando extração: Contexto idêntico detectado (Hash: ${contextHash})`);
         return null;
       }
 
@@ -107,7 +104,7 @@ export const leadCaptureService = {
       if (currentLead?.lastLeadExtractionAt) {
         const diff = now.getTime() - currentLead.lastLeadExtractionAt.getTime();
         if (diff < EXTRACTION_COOLDOWN_MS) {
-          console.log(`[LEAD_IA] Pulando extração: Cooldown ativo (${Math.round((EXTRACTION_COOLDOWN_MS - diff)/1000)}s restantes)`);
+          console.debug(`[LEAD_IA] Pulando extração: Cooldown ativo (${Math.round((EXTRACTION_COOLDOWN_MS - diff)/1000)}s restantes)`);
           return null;
         }
       }
@@ -118,11 +115,11 @@ export const leadCaptureService = {
         ["ok", "sim", "não", "vlw", "obrigado", "blz", "ok!", "tudo bem", "oi", "ola", "olá"].includes(userMessage.toLowerCase().trim()) ||
         !hasRelevantContent(userMessage)
       ) {
-        console.log(`[LEAD_IA] Pulando extração: Mensagem sem conteúdo relevante para lead.`);
+        console.debug(`[LEAD_IA] Pulando extração: Mensagem sem conteúdo relevante para lead.`);
         return null;
       }
 
-       console.log(`[LEAD_IA] Iniciando extração Groq para sessão ${sessionId}...`);
+       console.debug(`[LEAD_IA] Iniciando extração Groq para sessão ${sessionId}...`);
 
        const extractionPrompt = `
 Extraia dados comerciais estruturados da conversa entre Consultora (Vick) e Cliente.

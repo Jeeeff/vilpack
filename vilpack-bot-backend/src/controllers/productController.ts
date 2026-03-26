@@ -195,46 +195,54 @@ export const productController = {
         console.log('[CSV] Headers detectados:', Object.keys(rows[0]));
       }
 
+      // ── Pré-carrega categorias e produtos existentes (evita N+1) ─────────────
+      // Em vez de 2–4 queries por linha de CSV, faz 2 queries globais e
+      // resolve em memória, depois grava cada produto com um único upsert.
+      const [existingCategories, existingProducts] = await Promise.all([
+        prisma.category.findMany({ where: { storeId: store.id }, select: { id: true, name: true } }),
+        prisma.product.findMany({ select: { id: true, name: true, description: true } }),
+      ]);
+
+      const categoryMap = new Map(existingCategories.map((c) => [c.name.toLowerCase(), c]));
+      const productMap  = new Map(existingProducts.map((p)  => [p.name.toLowerCase(), p]));
+
+      // Cria categorias faltantes em lote (1 query por categoria nova, não por linha)
+      const neededCatNames = [...new Set(rows.map((row) => normalize(row).type).filter(Boolean))];
+      for (const catName of neededCatNames) {
+        if (!categoryMap.has(catName.toLowerCase())) {
+          try {
+            const created = await prisma.category.create({ data: { name: catName, storeId: store.id } });
+            categoryMap.set(catName.toLowerCase(), created);
+          } catch {
+            const found = await prisma.category.findFirst({
+              where: { name: { equals: catName, mode: 'insensitive' }, storeId: store.id },
+            });
+            if (found) categoryMap.set(catName.toLowerCase(), found);
+          }
+        }
+      }
+
+      // Processa cada linha com os mapas em memória — 1 query por produto
       for (const row of rows) {
         const { name, type, description, active } = normalize(row);
         if (!name) { results.errors.push(`Linha ignorada: nome vazio`); continue; }
 
         try {
-          // Busca ou cria categoria pelo nome do tipo
-          let category = await prisma.category.findFirst({
-            where: { name: { equals: type, mode: 'insensitive' }, storeId: store.id },
-          });
-          if (!category) {
-            category = await prisma.category.create({
-              data: { name: type, storeId: store.id },
-            });
-          }
+          const category = categoryMap.get(type.toLowerCase());
+          if (!category) { results.errors.push(`"${name}": categoria "${type}" não encontrada`); continue; }
 
-          // Verifica se produto já existe pelo nome (case-insensitive) em qualquer categoria
-          const existing = await prisma.product.findFirst({
-            where: { name: { equals: name, mode: 'insensitive' } },
-          });
-
-          if (existing) {
+          const existingProduct = productMap.get(name.toLowerCase());
+          if (existingProduct) {
             await prisma.product.update({
-              where: { id: existing.id },
-              data: {
-                description: description || existing.description,
-                categoryId: category.id,
-                active,
-              },
+              where: { id: existingProduct.id },
+              data: { description: description || existingProduct.description, categoryId: category.id, active },
             });
             results.updated++;
           } else {
             await prisma.product.create({
-              data: {
-                name,
-                description: description || null,
-                price: 0,          // Preço definido via WhatsApp conforme regra de negócio
-                categoryId: category.id,
-                active,
-              },
+              data: { name, description: description || null, price: 0, categoryId: category.id, active },
             });
+            productMap.set(name.toLowerCase(), { id: 'new', name, description: description || null });
             results.created++;
           }
         } catch (err: any) {

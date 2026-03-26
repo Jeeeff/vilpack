@@ -249,6 +249,7 @@ HANDOFF — use EXATAMENTE este formato quando tiver nome + interesse + WhatsApp
     return prisma.message.findMany({
       where: { sessionId },
       orderBy: { createdAt: 'asc' },
+      take: 100,
     });
   },
 };
