@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,10 +23,17 @@ import { toast } from "sonner";
 import { API_URL } from "@/config/api";
 import { Plus, Loader2, Upload } from "lucide-react";
 
-interface Category {
-  id: string;
-  name: string;
-}
+// Lista canônica de segmentos — mesma usada na Vitrine e no site público
+const SEGMENTS = [
+  "Mercado",
+  "Padaria",
+  "Limpeza",
+  "Indústria",
+  "Sacolas",
+  "Bobinas",
+  "Isopor",
+  "Descartáveis",
+];
 
 interface CreateProductModalProps {
   onProductCreated: () => void;
@@ -35,71 +42,42 @@ interface CreateProductModalProps {
 export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    categoryId: '',
+    segment: '',
     active: true,
   });
-
-  useEffect(() => {
-    if (open) {
-      fetchCategories();
-    }
-  }, [open]);
-
-  const fetchCategories = async () => {
-    try {
-      const token = localStorage.getItem('admin_token');
-      const res = await fetch(`${API_URL}/categories`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(data);
-      }
-    } catch {
-      toast.error('Erro ao carregar categorias');
-    }
-  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validar tamanho (5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast.error('Imagem muito grande (máx 5MB)');
         return;
       }
-      // Validar tipo
       if (!file.type.startsWith('image/')) {
         toast.error('Arquivo deve ser uma imagem');
         return;
       }
       setImageFile(file);
-      // Preview
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
+      reader.onload = (e) => setImagePreview(e.target?.result as string);
       reader.readAsDataURL(file);
     }
   };
 
   const handleCreateProduct = async () => {
-    // Validações
     if (!formData.name.trim()) {
       toast.error('Nome do produto é obrigatório');
       return;
     }
-    if (!formData.categoryId) {
-      toast.error('Categoria é obrigatória');
+    if (!formData.segment) {
+      toast.error('Segmento é obrigatório');
       return;
     }
 
@@ -107,7 +85,6 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
     const token = localStorage.getItem('admin_token');
 
     try {
-      // Criar produto
       const productRes = await fetch(`${API_URL}/products`, {
         method: 'POST',
         headers: {
@@ -117,7 +94,7 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
         body: JSON.stringify({
           name: formData.name.trim(),
           description: formData.description.trim() || null,
-          categoryId: formData.categoryId,
+          segment: formData.segment,
           active: formData.active,
         }),
       });
@@ -131,17 +108,15 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
 
       const product = await productRes.json();
 
-      // Se houver imagem, fazer upload
+      // Upload de imagem opcional
       if (imageFile) {
         const formDataImage = new FormData();
         formDataImage.append('image', imageFile);
-
         const imageRes = await fetch(`${API_URL}/admin/products/${product.id}/image`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: formDataImage,
         });
-
         if (!imageRes.ok) {
           toast.warning('Produto criado mas erro ao enviar imagem');
         } else {
@@ -151,15 +126,12 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
         toast.success('Produto criado com sucesso!');
       }
 
-      // Limpar form
-      setFormData({ name: '', description: '', categoryId: '', active: true });
+      setFormData({ name: '', description: '', segment: '', active: true });
       setImageFile(null);
       setImagePreview(null);
       setOpen(false);
-
-      // Callback
       onProductCreated();
-    } catch (error) {
+    } catch {
       toast.error('Erro de conexão ao criar produto');
     } finally {
       setLoading(false);
@@ -192,10 +164,7 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
                 className="w-full h-40 object-cover rounded-lg border border-zinc-200"
               />
               <button
-                onClick={() => {
-                  setImageFile(null);
-                  setImagePreview(null);
-                }}
+                onClick={() => { setImageFile(null); setImagePreview(null); }}
                 className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1 rounded"
               >
                 ✕
@@ -252,19 +221,22 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
             />
           </div>
 
-          {/* Categoria */}
+          {/* Segmento */}
           <div>
-            <Label htmlFor="category" className="text-sm font-medium">
-              Categoria <span className="text-red-500">*</span>
+            <Label htmlFor="segment" className="text-sm font-medium">
+              Segmento <span className="text-red-500">*</span>
             </Label>
-            <Select value={formData.categoryId} onValueChange={(value) => setFormData({ ...formData, categoryId: value })}>
-              <SelectTrigger id="category" className="mt-1">
-                <SelectValue placeholder="Selecione uma categoria" />
+            <Select
+              value={formData.segment}
+              onValueChange={(value) => setFormData({ ...formData, segment: value })}
+            >
+              <SelectTrigger id="segment" className="mt-1">
+                <SelectValue placeholder="Selecione um segmento" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
+                {SEGMENTS.map((seg) => (
+                  <SelectItem key={seg} value={seg}>
+                    {seg}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -286,29 +258,14 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
 
         {/* Actions */}
         <div className="flex gap-2 pt-4">
-          <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
-            disabled={loading}
-            className="flex-1"
-          >
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={loading} className="flex-1">
             Cancelar
           </Button>
-          <Button
-            onClick={handleCreateProduct}
-            disabled={loading}
-            className="flex-1"
-          >
+          <Button onClick={handleCreateProduct} disabled={loading} className="flex-1">
             {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Criando...
-              </>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Criando...</>
             ) : (
-              <>
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Produto
-              </>
+              <><Plus className="h-4 w-4 mr-2" />Criar Produto</>
             )}
           </Button>
         </div>

@@ -129,9 +129,36 @@ export const productController = {
 
   async create(req: Request, res: Response) {
     try {
-      // price é obrigatório no schema — no Catálogo não é definido pelo usuário
-      // (preço fica na Vitrine), por isso injetamos 0 como default se omitido.
-      const data = { price: 0, ...req.body };
+      const { segment, categoryId, ...rest } = req.body;
+
+      // Resolve categoryId a partir do nome do segmento canônico (enviado pelo modal)
+      let resolvedCategoryId: string | undefined = categoryId;
+      if (segment && !categoryId) {
+        // Garante que existe a loja 'vilpack'
+        let store = await prisma.store.findUnique({ where: { slug: 'vilpack' } });
+        if (!store) {
+          store = await prisma.store.create({
+            data: { name: 'Vilpack', slug: 'vilpack', phoneNumber: '5511996113977' },
+          });
+        }
+        // Busca ou cria a categoria com o nome do segmento
+        let category = await prisma.category.findFirst({
+          where: { name: { equals: segment, mode: 'insensitive' }, storeId: store.id },
+        });
+        if (!category) {
+          category = await prisma.category.create({
+            data: { name: segment, storeId: store.id },
+          });
+        }
+        resolvedCategoryId = category.id;
+      }
+
+      if (!resolvedCategoryId) {
+        return res.status(400).json({ error: 'Segmento ou categoryId é obrigatório' });
+      }
+
+      // price é obrigatório no schema — preço fica na Vitrine, não no Catálogo
+      const data = { price: 0, ...rest, categoryId: resolvedCategoryId };
       const product = await productService.create(data);
       res.status(201).json(product);
     } catch (error: any) {
