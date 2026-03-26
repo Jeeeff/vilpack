@@ -27,6 +27,7 @@ services:
     build:
       context: ./vilpack-bot-backend
       network: host
+    image: vilpack-backend
     restart: unless-stopped
     ports:
       - "3001:3001"
@@ -60,6 +61,7 @@ services:
     build:
       context: .
       network: host
+    image: vilpack-frontend
     restart: unless-stopped
     ports:
       - "80:80"
