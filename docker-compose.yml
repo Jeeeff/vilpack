@@ -24,7 +24,9 @@ services:
           memory: 512M
 
   backend:
-    build: ./vilpack-bot-backend
+    build:
+      context: ./vilpack-bot-backend
+      network: host
     restart: unless-stopped
     ports:
       - "3001:3001"
@@ -55,7 +57,9 @@ services:
           memory: 512M
 
   frontend:
-    build: .
+    build:
+      context: .
+      network: host
     restart: unless-stopped
     ports:
       - "80:80"
