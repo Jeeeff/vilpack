@@ -1,0 +1,7 @@
+.git
+.gitignore
+*.md
+dist
+.env
+.env.*
+nginx.dev.conf

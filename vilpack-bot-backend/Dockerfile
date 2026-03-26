@@ -2,9 +2,7 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
-
+# node_modules é copiado do contexto (instalado no host antes do build)
 COPY . .
 RUN npx prisma generate
 RUN npm run build

@@ -1,8 +1,7 @@
 # Stage 1: Build
+# node_modules é copiado do contexto (instalado no host antes do build)
 FROM node:20-alpine as build
 WORKDIR /app
-COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
 RUN npm run build
 

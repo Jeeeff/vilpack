@@ -211,7 +211,7 @@ export default function AtendimentoInbox() {
         setConversations((prev) =>
           prev.map((c) =>
             c.id === conversationId
-              ? { ...c, unreadCount: 0, lastMessageAt: (message as MessageItem).createdAt }
+              ? { ...c, unreadCount: 0, lastMessageAt: (message as MessageItem).timestamp }
               : c,
           ),
         );
@@ -219,7 +219,7 @@ export default function AtendimentoInbox() {
         setConversations((prev) =>
           prev.map((c) =>
             c.id === conversationId
-              ? { ...c, unreadCount: (c.unreadCount ?? 0) + 1, lastMessageAt: (message as MessageItem).createdAt }
+              ? { ...c, unreadCount: (c.unreadCount ?? 0) + 1, lastMessageAt: (message as MessageItem).timestamp }
               : c,
           ),
         );
