@@ -284,9 +284,21 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
                     key={msg.id}
                     className={cn(
                       "flex w-full animate-in fade-in slide-in-from-bottom-2 duration-300",
-                      msg.sender === 'user' ? "justify-end" : "justify-start"
+                      msg.sender === 'user' ? "justify-end" : "justify-start items-end gap-1.5"
                     )}
                   >
+                    {/* Mini-avatar da Vick — só nas msgs dela, discreto */}
+                    {msg.sender === 'assistant' && (
+                      <div className="shrink-0 w-6 h-6 rounded-full overflow-hidden border border-white/60 shadow-sm opacity-70 mb-0.5 bg-primary/60">
+                        <img
+                          src={VICK_AVATAR}
+                          alt=""
+                          aria-hidden="true"
+                          className="w-full h-full object-cover object-top"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
                     <div
                       className={cn(
                         "max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm transition-all",

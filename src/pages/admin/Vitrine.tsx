@@ -286,7 +286,7 @@ function ProductCard({
           </button>
           {segmentOpen && (
             <div
-              className="absolute top-full left-0 right-0 mt-1 z-30 bg-white rounded-lg border shadow-lg py-1"
+              className="absolute top-full left-0 right-0 mt-1 z-30 bg-white rounded-lg border shadow-lg py-1 max-h-48 overflow-y-auto"
               style={{ borderColor: "hsl(var(--admin-border))" }}
             >
               {SEGMENTS.map((seg) => {
