@@ -1,6 +1,7 @@
 import Groq from 'groq-sdk';
 import prisma from "../config/prisma";
 import { leadCaptureService } from "./leadCaptureService";
+import { salesNotificationService } from "./salesNotificationService";
 import {
   buildCategoryList,
   buildCategoryContext,
@@ -237,6 +238,9 @@ HANDOFF — use EXATAMENTE este formato quando tiver nome + interesse + WhatsApp
         prisma.message.create({ data: { sessionId, role: 'user', content: message } }),
         prisma.message.create({ data: { sessionId, role: 'assistant', content: reply } }),
       ]);
+
+      // Notifica equipe de vendas se a Vick gerou um [RESUMO_FINAL] (fire-and-forget)
+      salesNotificationService.onResumoFinal(sessionId, reply).catch(() => {});
 
       return reply;
     } catch (error: any) {

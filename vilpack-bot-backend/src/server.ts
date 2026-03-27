@@ -8,6 +8,7 @@ import prisma from './config/prisma';
 import bcrypt from 'bcryptjs';
 import { initSocketServer } from './config/socketServer';
 import { whatsappRealtimeService } from './services/whatsappRealtimeService';
+import { salesNotificationService } from './services/salesNotificationService';
 
 const PORT = process.env.PORT || 3001;
 
@@ -52,6 +53,18 @@ async function start() {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
+
+    // Job de inatividade — verifica sessões paradas a cada 60s
+    // Só loga se SALES_NOTIFICATIONS_ENABLED=true
+    if (process.env.SALES_NOTIFICATIONS_ENABLED === 'true') {
+      const INTERVAL_MS = 60 * 1000; // 1 minuto
+      setInterval(() => {
+        salesNotificationService.checkInactiveSessions().catch((err) =>
+          console.warn('[salesNotif] Erro no job de inatividade:', err?.message),
+        );
+      }, INTERVAL_MS);
+      console.log('✅ Job de notificação de inatividade ativo (intervalo: 60s)');
+    }
     
     // Graceful Shutdown
     const shutdown = async () => {
