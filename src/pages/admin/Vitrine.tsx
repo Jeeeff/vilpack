@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Eye, EyeOff, ImagePlus, Loader2, RefreshCw, Search, Tag,
   DollarSign, LayoutGrid, List, Globe, X, Check, Pencil, Trash2,
-  GripVertical, Package,
+  Package, ChevronDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -147,7 +147,32 @@ function ProductCard({
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [togglingPublish, setTogglingPublish] = useState(false);
+  const [segmentOpen, setSegmentOpen] = useState(false);
+  const segmentRef = useRef<HTMLDivElement>(null);
   const imgSrc = getImageSrc(product.imageUrl);
+
+  // Segmentos ativos: lê vitrineSegment como CSV
+  const activeSegments: string[] = product.vitrineSegment
+    ? product.vitrineSegment.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const toggleSegment = async (seg: string) => {
+    const next = activeSegments.includes(seg)
+      ? activeSegments.filter((s) => s !== seg)
+      : [...activeSegments, seg];
+    await onUpdate(product.id, { vitrineSegment: next.length > 0 ? next.join(",") : null } as Partial<VitrineProduct>);
+  };
+
+  // Fecha dropdown ao clicar fora
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (segmentRef.current && !segmentRef.current.contains(e.target as Node)) {
+        setSegmentOpen(false);
+      }
+    };
+    if (segmentOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [segmentOpen]);
 
   const patch = (field: keyof VitrineProduct, value: unknown) =>
     onUpdate(product.id, { [field]: value } as Partial<VitrineProduct>);
@@ -246,23 +271,44 @@ function ProductCard({
           />
         </div>
 
-        {/* Segment */}
-        <div className="flex items-center gap-1.5">
-          <LayoutGrid size={11} style={{ color: "hsl(var(--admin-text-muted))" }} />
-          <select
-            value={product.vitrineSegment ?? ""}
-            onChange={(e) => patch("vitrineSegment", e.target.value || null)}
-            className="flex-1 text-xs rounded border px-2 py-1 outline-none bg-white"
-            style={{
-              borderColor: "hsl(var(--admin-border))",
-              color: product.vitrineSegment ? "hsl(var(--admin-text-primary))" : "hsl(var(--admin-text-muted))",
-            }}
+        {/* Segment — multi-select dropdown */}
+        <div className="flex items-center gap-1.5 relative" ref={segmentRef}>
+          <LayoutGrid size={11} style={{ color: "hsl(var(--admin-text-muted))" }} className="shrink-0" />
+          <button
+            onClick={() => setSegmentOpen((v) => !v)}
+            className="flex-1 flex items-center justify-between text-xs rounded border px-2 py-1 bg-white outline-none hover:border-[hsl(var(--admin-yellow))] transition-colors"
+            style={{ borderColor: "hsl(var(--admin-border))", color: activeSegments.length > 0 ? "hsl(var(--admin-text-primary))" : "hsl(var(--admin-text-muted))" }}
           >
-            <option value="">Segmento…</option>
-            {SEGMENTS.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+            <span className="truncate">
+              {activeSegments.length > 0 ? activeSegments.join(", ") : "Segmento…"}
+            </span>
+            <ChevronDown size={10} className="shrink-0 ml-1 opacity-50" />
+          </button>
+          {segmentOpen && (
+            <div
+              className="absolute top-full left-0 right-0 mt-1 z-30 bg-white rounded-lg border shadow-lg py-1"
+              style={{ borderColor: "hsl(var(--admin-border))" }}
+            >
+              {SEGMENTS.map((seg) => {
+                const checked = activeSegments.includes(seg);
+                return (
+                  <label
+                    key={seg}
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer hover:bg-[hsl(var(--admin-bg))] select-none"
+                    style={{ color: checked ? "hsl(var(--admin-yellow))" : "hsl(var(--admin-text-primary))", fontWeight: checked ? 600 : 400 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleSegment(seg)}
+                      className="accent-[hsl(var(--admin-yellow))]"
+                    />
+                    {seg}
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Tags */}

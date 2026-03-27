@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send, Loader2, Store } from 'lucide-react';
 import { Button } from './ui/button';
@@ -6,6 +5,9 @@ import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
+
+// Avatar da Vick — imagem em public/vick.png
+const VICK_AVATAR = "/vick.png";
 
 type Message = {
   id: string;
@@ -193,30 +195,59 @@ export const SmartChat = ({ onSessionChange }: SmartChatProps) => {
     <>
       {/* Floating Button */}
       {!isOpen && (
-        <Button
+        <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 bg-primary hover:bg-primary/90 text-white transition-all duration-500 hover:scale-110 active:scale-95 animate-bounce-slow flex flex-col items-center justify-center gap-0.5 border-2 border-white/20"
-          size="icon"
+          className="fixed bottom-6 right-6 z-50 group"
+          aria-label="Falar com a Vick"
         >
-          <MessageCircle className="h-7 w-7" />
-          <span className="text-[10px] font-bold uppercase tracking-tighter">Vick</span>
-        </Button>
+          {/* Anel de pulso */}
+          <span className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
+          {/* Foto circular com borda amarela Vilpack */}
+          <div className="relative w-16 h-16 rounded-full border-[3px] border-[hsl(42_97%_53%)] shadow-2xl overflow-hidden transition-transform duration-300 group-hover:scale-110 group-active:scale-95 bg-primary">
+            <img
+              src={VICK_AVATAR}
+              alt="Vick"
+              className="w-full h-full object-cover object-top"
+              onError={(e) => {
+                // Fallback se a imagem ainda não foi colocada na pasta
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            {/* Fallback icon (fica atrás da imagem) */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-primary">
+              <MessageCircle className="h-6 w-6 text-white" />
+              <span className="text-[9px] font-bold uppercase tracking-tighter text-white mt-0.5">Vick</span>
+            </div>
+          </div>
+          {/* Badge online */}
+          <span className="absolute bottom-0.5 right-0.5 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
+        </button>
       )}
 
       {/* Chat Window */}
       {isOpen && (
         <Card className="fixed bottom-4 right-4 md:bottom-6 md:right-6 w-[calc(100vw-32px)] md:w-[420px] h-[min(560px,calc(100dvh-2rem))] md:h-[650px] max-h-[calc(100dvh-2rem)] shadow-[-20px_20px_60px_rgba(0,0,0,0.15)] z-50 flex flex-col border-none overflow-hidden rounded-3xl animate-in slide-in-from-bottom-10 fade-in duration-500">
-          <CardHeader className="bg-primary text-primary-foreground p-5 flex flex-row items-center justify-between shrink-0 shadow-lg relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-sm border border-white/10">
-                  <Store className="h-6 w-6 text-white" />
+          <CardHeader className="bg-primary text-primary-foreground p-4 flex flex-row items-center justify-between shrink-0 shadow-lg relative z-10">
+            <div className="flex items-center gap-3">
+              {/* Avatar da Vick no header */}
+              <div className="relative shrink-0">
+                <div className="w-11 h-11 rounded-full border-2 border-white/40 overflow-hidden bg-primary/60 shadow">
+                  <img
+                    src={VICK_AVATAR}
+                    alt="Vick"
+                    className="w-full h-full object-cover object-top"
+                    onError={(e) => {
+                      const el = e.target as HTMLImageElement;
+                      el.style.display = 'none';
+                      el.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center"><svg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'white\' stroke-width=\'2\'><path d=\'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\'/><circle cx=\'12\' cy=\'7\' r=\'4\'/></svg></div>';
+                    }}
+                  />
                 </div>
-                <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 border-2 border-primary rounded-full"></div>
+                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-primary rounded-full" />
               </div>
               <div>
-                <CardTitle className="text-xl font-bold tracking-tight">Vendedora Vick</CardTitle>
-                <div className="flex items-center gap-1.5">
+                <CardTitle className="text-base font-bold tracking-tight leading-tight">Vendedora Vick</CardTitle>
+                <div className="flex items-center gap-1.5 mt-0.5">
                   <div className="h-1.5 w-1.5 bg-green-400 rounded-full animate-pulse"></div>
                   <p className="text-xs text-primary-foreground/70 font-medium">Online e pronta para ajudar</p>
                 </div>
