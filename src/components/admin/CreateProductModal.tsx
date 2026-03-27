@@ -7,18 +7,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { API_URL } from "@/config/api";
 import { Plus, Loader2, Upload } from "lucide-react";
@@ -49,9 +43,18 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    segment: '',
+    segments: [] as string[],
     active: true,
   });
+
+  const toggleSegment = (seg: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      segments: prev.segments.includes(seg)
+        ? prev.segments.filter((s) => s !== seg)
+        : [...prev.segments, seg],
+    }));
+  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -76,8 +79,8 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
       toast.error('Nome do produto é obrigatório');
       return;
     }
-    if (!formData.segment) {
-      toast.error('Segmento é obrigatório');
+    if (formData.segments.length === 0) {
+      toast.error('Selecione pelo menos um segmento');
       return;
     }
 
@@ -94,7 +97,7 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
         body: JSON.stringify({
           name: formData.name.trim(),
           description: formData.description.trim() || null,
-          segment: formData.segment,
+          segments: formData.segments,
           active: formData.active,
         }),
       });
@@ -126,7 +129,7 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
         toast.success('Produto criado com sucesso!');
       }
 
-      setFormData({ name: '', description: '', segment: '', active: true });
+      setFormData({ name: '', description: '', segments: [], active: true });
       setImageFile(null);
       setImagePreview(null);
       setOpen(false);
@@ -221,26 +224,45 @@ export const CreateProductModal = ({ onProductCreated }: CreateProductModalProps
             />
           </div>
 
-          {/* Segmento */}
+          {/* Segmentos — multisseleção */}
           <div>
-            <Label htmlFor="segment" className="text-sm font-medium">
-              Segmento <span className="text-red-500">*</span>
+            <Label className="text-sm font-medium">
+              Segmentos <span className="text-red-500">*</span>
             </Label>
-            <Select
-              value={formData.segment}
-              onValueChange={(value) => setFormData({ ...formData, segment: value })}
-            >
-              <SelectTrigger id="segment" className="mt-1">
-                <SelectValue placeholder="Selecione um segmento" />
-              </SelectTrigger>
-              <SelectContent>
-                {SEGMENTS.map((seg) => (
-                  <SelectItem key={seg} value={seg}>
+            <p className="text-xs text-zinc-500 mt-0.5 mb-2">
+              Selecione um ou mais segmentos onde este produto se encaixa.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {SEGMENTS.map((seg) => {
+                const checked = formData.segments.includes(seg);
+                return (
+                  <label
+                    key={seg}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors select-none ${
+                      checked
+                        ? "border-primary bg-primary/10 text-primary font-medium"
+                        : "border-zinc-200 hover:border-zinc-300 text-zinc-700"
+                    }`}
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => toggleSegment(seg)}
+                      className="shrink-0"
+                    />
                     {seg}
-                  </SelectItem>
+                  </label>
+                );
+              })}
+            </div>
+            {formData.segments.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {formData.segments.map((s) => (
+                  <Badge key={s} variant="secondary" className="text-xs">
+                    {s}
+                  </Badge>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+            )}
           </div>
 
           {/* Ativo */}

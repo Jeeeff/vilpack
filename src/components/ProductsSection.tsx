@@ -89,14 +89,20 @@ const ProductsSection = () => {
   }, []);
 
   // Deriva tabs: "Todos os Produtos" + segmentos na ordem canônica
-  const presentSegments = Array.from(new Set(products.map((p) => p.segment)));
+  // Um produto pode ter múltiplos segmentos em CSV (ex: "Mercado,Padaria")
+  const allSegmentsFlat = products.flatMap((p) =>
+    p.segment.split(",").map((s) => s.trim()).filter(Boolean)
+  );
+  const presentSegments = Array.from(new Set(allSegmentsFlat));
   const orderedSegments = SEGMENT_ORDER.filter((s) => presentSegments.includes(s));
   const extraSegments   = presentSegments.filter((s) => !SEGMENT_ORDER.includes(s)).sort();
   const segments        = ["Todos os Produtos", ...orderedSegments, ...extraSegments];
 
   const filtered = active === "Todos os Produtos"
     ? products
-    : products.filter((p) => p.segment === active);
+    : products.filter((p) =>
+        p.segment.split(",").map((s) => s.trim()).includes(active)
+      );
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);

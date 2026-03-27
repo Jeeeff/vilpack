@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { API_URL } from "@/config/api";
-import { Upload, FileText, ImagePlus, CheckCircle2, XCircle, Loader2, Package, Trash2 } from "lucide-react";
+import { Upload, FileText, ImagePlus, CheckCircle2, XCircle, Loader2, Package, Trash2, Pencil } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { CreateProductModal } from "@/components/admin/CreateProductModal";
+import { EditProductModal, ProductToEdit } from "@/components/admin/EditProductModal";
 
 interface Product {
   id: string;
@@ -26,6 +27,7 @@ interface Product {
   description: string | null;
   imageUrl: string | null;
   active: boolean;
+  vitrineSegment: string | null;
   category: { id: string; name: string } | null;
 }
 
@@ -54,6 +56,8 @@ const AdminCatalog = () => {
   const [search, setSearch] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductToEdit | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { fetchProducts(); }, []);
@@ -384,6 +388,7 @@ const AdminCatalog = () => {
                   <TableHead className="admin-th">Tipo / Categoria</TableHead>
                   <TableHead className="admin-th">Status</TableHead>
                   <TableHead className="admin-th">Upload de Imagem</TableHead>
+                  <TableHead className="admin-th w-12">Editar</TableHead>
                   <TableHead className="admin-th w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -453,8 +458,28 @@ const AdminCatalog = () => {
                         />
                       </label>
                     </TableCell>
-                    <TableCell>
-                      <AlertDialog>
+                     <TableCell>
+                       <Button
+                         variant="ghost"
+                         size="icon"
+                         className="text-[hsl(var(--admin-text-muted))] hover:text-primary hover:bg-primary/10"
+                         onClick={() => {
+                           setEditingProduct({
+                             id: product.id,
+                             name: product.name,
+                             description: product.description,
+                             active: product.active,
+                             vitrineSegment: product.vitrineSegment,
+                             category: product.category,
+                           });
+                           setEditModalOpen(true);
+                         }}
+                       >
+                         <Pencil className="h-4 w-4" />
+                       </Button>
+                     </TableCell>
+                     <TableCell>
+                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
                             variant="ghost"
@@ -494,6 +519,14 @@ const AdminCatalog = () => {
           )}
         </div>
       </div>
+
+      {/* Modal de edição */}
+      <EditProductModal
+        product={editingProduct}
+        open={editModalOpen}
+        onClose={() => { setEditModalOpen(false); setEditingProduct(null); }}
+        onProductUpdated={fetchProducts}
+      />
     </div>
   );
 };

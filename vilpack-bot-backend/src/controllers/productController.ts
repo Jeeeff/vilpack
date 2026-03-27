@@ -129,11 +129,14 @@ export const productController = {
 
   async create(req: Request, res: Response) {
     try {
-      const { segment, categoryId, ...rest } = req.body;
+      // Suporta tanto `segments` (array, novo modal) quanto `segment` (string, legado)
+      const { segments, segment, categoryId, ...rest } = req.body;
+      const segmentList: string[] = Array.isArray(segments) && segments.length > 0
+        ? segments
+        : segment ? [segment] : [];
 
-      // Resolve categoryId a partir do nome do segmento canônico (enviado pelo modal)
       let resolvedCategoryId: string | undefined = categoryId;
-      if (segment && !categoryId) {
+      if (segmentList.length > 0 && !categoryId) {
         // Garante que existe a loja 'vilpack'
         let store = await prisma.store.findUnique({ where: { slug: 'vilpack' } });
         if (!store) {
@@ -141,13 +144,14 @@ export const productController = {
             data: { name: 'Vilpack', slug: 'vilpack', phoneNumber: '5511996113977' },
           });
         }
-        // Busca ou cria a categoria com o nome do segmento
+        // Categoria principal = primeiro segmento
+        const primarySegment = segmentList[0];
         let category = await prisma.category.findFirst({
-          where: { name: { equals: segment, mode: 'insensitive' }, storeId: store.id },
+          where: { name: { equals: primarySegment, mode: 'insensitive' }, storeId: store.id },
         });
         if (!category) {
           category = await prisma.category.create({
-            data: { name: segment, storeId: store.id },
+            data: { name: primarySegment, storeId: store.id },
           });
         }
         resolvedCategoryId = category.id;
@@ -157,8 +161,11 @@ export const productController = {
         return res.status(400).json({ error: 'Segmento ou categoryId é obrigatório' });
       }
 
+      // vitrineSegment = CSV de todos os segmentos selecionados
+      const vitrineSegment = segmentList.length > 0 ? segmentList.join(',') : undefined;
+
       // price é obrigatório no schema — preço fica na Vitrine, não no Catálogo
-      const data = { price: 0, ...rest, categoryId: resolvedCategoryId };
+      const data = { price: 0, ...rest, categoryId: resolvedCategoryId, ...(vitrineSegment !== undefined ? { vitrineSegment } : {}) };
       const product = await productService.create(data);
       res.status(201).json(product);
     } catch (error: any) {
@@ -169,9 +176,38 @@ export const productController = {
 
   async update(req: Request, res: Response) {
     try {
-      const product = await productService.update(req.params.id as string, req.body);
+      const { segments, segment, ...rest } = req.body;
+      const segmentList: string[] = Array.isArray(segments) && segments.length > 0
+        ? segments
+        : segment ? [segment] : [];
+
+      let updateData: Record<string, unknown> = { ...rest };
+
+      if (segmentList.length > 0) {
+        // Categoria principal = primeiro segmento
+        const primarySegment = segmentList[0];
+        let store = await prisma.store.findUnique({ where: { slug: 'vilpack' } });
+        if (!store) {
+          store = await prisma.store.create({
+            data: { name: 'Vilpack', slug: 'vilpack', phoneNumber: '5511996113977' },
+          });
+        }
+        let category = await prisma.category.findFirst({
+          where: { name: { equals: primarySegment, mode: 'insensitive' }, storeId: store.id },
+        });
+        if (!category) {
+          category = await prisma.category.create({
+            data: { name: primarySegment, storeId: store.id },
+          });
+        }
+        updateData.categoryId = category.id;
+        updateData.vitrineSegment = segmentList.join(',');
+      }
+
+      const product = await productService.update(req.params.id as string, updateData);
       res.json(product);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[PRODUCT UPDATE ERROR]', error?.message, req.body);
       res.status(500).json({ error: 'Erro ao atualizar produto' });
     }
   },
