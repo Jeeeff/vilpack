@@ -36,8 +36,8 @@ services:
       # Database — usa PostgreSQL do projeto para persistir instâncias/sessões
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: postgresql
-      DATABASE_URL: ${DATABASE_URL}
-      DATABASE_CONNECTION_URI: ${DATABASE_URL}
+      DATABASE_URL: ${EVOLUTION_DATABASE_URL}
+      DATABASE_CONNECTION_URI: ${EVOLUTION_DATABASE_URL}
       DATABASE_CONNECTION_CLIENT_NAME: evolution
       DATABASE_SAVE_DATA_INSTANCE: "true"
       DATABASE_SAVE_DATA_NEW_MESSAGE: "false"
