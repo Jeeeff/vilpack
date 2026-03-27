@@ -148,7 +148,9 @@ function ProductCard({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [togglingPublish, setTogglingPublish] = useState(false);
   const [segmentOpen, setSegmentOpen] = useState(false);
+  const [dropdownUp, setDropdownUp] = useState(false);
   const segmentRef = useRef<HTMLDivElement>(null);
+  const segmentBtnRef = useRef<HTMLButtonElement>(null);
   const imgSrc = getImageSrc(product.imageUrl);
 
   // Segmentos ativos: lê vitrineSegment como CSV
@@ -161,6 +163,17 @@ function ProductCard({
       ? activeSegments.filter((s) => s !== seg)
       : [...activeSegments, seg];
     await onUpdate(product.id, { vitrineSegment: next.length > 0 ? next.join(",") : null } as Partial<VitrineProduct>);
+  };
+
+  // Ao abrir o dropdown, decide se abre para cima ou para baixo
+  const handleSegmentToggle = () => {
+    if (!segmentOpen && segmentBtnRef.current) {
+      const rect = segmentBtnRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      // dropdown tem ~200px (8 itens × ~25px); se não couber embaixo, abre pra cima
+      setDropdownUp(spaceBelow < 210);
+    }
+    setSegmentOpen((v) => !v);
   };
 
   // Fecha dropdown ao clicar fora
@@ -275,7 +288,8 @@ function ProductCard({
         <div className="flex items-center gap-1.5 relative" ref={segmentRef}>
           <LayoutGrid size={11} style={{ color: "hsl(var(--admin-text-muted))" }} className="shrink-0" />
           <button
-            onClick={() => setSegmentOpen((v) => !v)}
+            ref={segmentBtnRef}
+            onClick={handleSegmentToggle}
             className="flex-1 flex items-center justify-between text-xs rounded border px-2 py-1 bg-white outline-none hover:border-[hsl(var(--admin-yellow))] transition-colors"
             style={{ borderColor: "hsl(var(--admin-border))", color: activeSegments.length > 0 ? "hsl(var(--admin-text-primary))" : "hsl(var(--admin-text-muted))" }}
           >
@@ -286,7 +300,10 @@ function ProductCard({
           </button>
           {segmentOpen && (
             <div
-              className="absolute top-full left-0 right-0 mt-1 z-30 bg-white rounded-lg border shadow-lg py-1 max-h-48 overflow-y-auto"
+              className={cn(
+                "absolute left-0 right-0 z-50 bg-white rounded-lg border shadow-lg py-1 max-h-52 overflow-y-auto",
+                dropdownUp ? "bottom-full mb-1" : "top-full mt-1",
+              )}
               style={{ borderColor: "hsl(var(--admin-border))" }}
             >
               {SEGMENTS.map((seg) => {
