@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import prisma from '../config/prisma';
 import productRoutes from './productRoutes';
 import categoryRoutes from './categoryRoutes';
 import cartRoutes from './cartRoutes';
@@ -26,18 +25,5 @@ router.use('/webhooks/evolution', evolutionWebhookRoutes);
 // Vitrine — site público + gestão admin
 router.use('/vitrine', vitrinePublicRouter);
 router.use('/admin/vitrine', vitrineAdminRouter);
-
-router.get('/force-migrate', async (req, res) => {
-    try {
-        await prisma.$executeRawUnsafe(`ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "customerName" TEXT;`);
-        await prisma.$executeRawUnsafe(`ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "customerPhone" TEXT;`);
-        await prisma.$executeRawUnsafe(`ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "orderSummary" TEXT;`);
-        await prisma.$executeRawUnsafe(`ALTER TABLE "Order" ALTER COLUMN "status" SET DEFAULT 'draft';`);
-        await prisma.$executeRawUnsafe(`ALTER TABLE "Order" ALTER COLUMN "total" SET DEFAULT 0.00;`);
-        res.send('Migration executed');
-    } catch (e) {
-        res.status(500).json(e);
-    }
-});
 
 export default router;

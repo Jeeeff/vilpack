@@ -9,12 +9,28 @@ import path from 'path';
 
 const app = express();
 
-// Middlewares
-app.use(cors());
+// CORS — em produção aceita apenas o domínio próprio; em dev aceita localhost
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? ['https://vilpack.com', 'https://www.vilpack.com']
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:4173'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permite requisições sem origin (mobile apps, curl, Postman em dev)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS bloqueado para origem: ${origin}`));
+  },
+  credentials: true,
+}));
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-app.use(morgan('dev'));
+
+// Em produção usa formato 'combined' (IP, user-agent, referrer) — nunca 'dev'
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
