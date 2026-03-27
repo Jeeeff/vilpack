@@ -21,6 +21,48 @@ services:
           cpus: '0.50'
           memory: 512M
 
+  # ── Evolution API v2 ────────────────────────────────────────────────────────
+  # Acessível internamente em http://evolution:8080
+  # Não expõe porta externamente — o backend acessa via rede Docker
+  evolution:
+    image: atendai/evolution-api:v2.2.3
+    restart: unless-stopped
+    volumes:
+      - evolution_instances:/evolution/instances
+    environment:
+      SERVER_URL: ${EVOLUTION_SERVER_URL:-http://evolution:8080}
+      AUTHENTICATION_TYPE: apikey
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      DATABASE_ENABLED: "false"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_REDIS_SAVE_INSTANCES: "true"
+      QRCODE_LIMIT: 30
+      LOG_LEVEL: ERROR
+    depends_on:
+      - redis
+    networks:
+      - vilpack-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 384M
+
+  # ── Redis (cache da Evolution) ───────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no
+    networks:
+      - vilpack-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.10'
+          memory: 64M
+
   backend:
     build:
       context: ./vilpack-bot-backend
@@ -36,13 +78,16 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY}
       JWT_SECRET: ${JWT_SECRET:-supersecretvilpackkey2026}
       ADMIN_USERS_JSON: ${ADMIN_USERS_JSON}
-      EVOLUTION_BASE_URL: ${EVOLUTION_BASE_URL}
+      EVOLUTION_BASE_URL: ${EVOLUTION_BASE_URL:-http://evolution:8080}
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
       EVOLUTION_INSTANCE_NAME: ${EVOLUTION_INSTANCE_NAME:-vilpack}
       EVOLUTION_WEBHOOK_SECRET: ${EVOLUTION_WEBHOOK_SECRET:-}
       ENABLE_WHATSAPP_PANEL: ${ENABLE_WHATSAPP_PANEL:-false}
       ENABLE_EVOLUTION_WEBHOOKS: ${ENABLE_EVOLUTION_WEBHOOKS:-false}
       ADMIN_REALTIME_ENABLED: ${ADMIN_REALTIME_ENABLED:-false}
+      SALES_NOTIFICATIONS_ENABLED: ${SALES_NOTIFICATIONS_ENABLED:-false}
+      SALES_WHATSAPP_NUMBER: ${SALES_WHATSAPP_NUMBER:-}
+      SALES_INACTIVITY_MINUTES: ${SALES_INACTIVITY_MINUTES:-15}
     volumes:
       - ./uploads:/app/public/uploads
     depends_on:
@@ -79,6 +124,7 @@ services:
 
 volumes:
   postgres_data:
+  evolution_instances:
 
 networks:
   vilpack-network:
